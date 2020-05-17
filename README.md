@@ -5,16 +5,15 @@
 
 <!-- badges: start -->
 
-[![Lifecycle:
-experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental)
-[![CRAN
-status](https://www.r-pkg.org/badges/version/themis)](https://CRAN.R-project.org/package=themis)
-[![Travis build
-status](https://travis-ci.org/tidymodels/themis.svg?branch=master)](https://travis-ci.org/tidymodels/themis)
+[![R build
+status](https://github.com/tidymodels/themis/workflows/R-CMD-check/badge.svg)](https://github.com/tidymodels/themis/actions)
 [![Codecov test
 coverage](https://codecov.io/gh/tidymodels/themis/branch/master/graph/badge.svg)](https://codecov.io/gh/tidymodels/themis?branch=master)
-[![R build
-status](https://github.com/tidymodels/themis/workflows/R-CMD-check/badge.svg)](https://github.com/tidymodels/themis)
+[![CRAN
+status](https://www.r-pkg.org/badges/version/themis)](https://CRAN.R-project.org/package=themis)
+[![Downloads](http://cranlogs.r-pkg.org/badges/themis)](https://CRAN.R-project.org/package=themis)
+[![Lifecycle:
+maturing](https://img.shields.io/badge/lifecycle-maturing-blue.svg)](https://www.tidyverse.org/lifecycle/#maturing)
 <!-- badges: end -->
 
 **themis** contain extra steps for the
@@ -28,8 +27,8 @@ who is typically depicted with a balance.
 
 ## Installation
 
-~~You can install the released version of themis from
-[CRAN](https://CRAN.R-project.org) with:~~
+You can install the released version of themis from
+[CRAN](https://CRAN.R-project.org) with:
 
 ``` r
 install.packages("themis")
