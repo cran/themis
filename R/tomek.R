@@ -78,7 +78,6 @@
 #'   xlim(c(1, 15)) +
 #'   ylim(c(1, 15))
 #'
-#' @importFrom recipes rand_id add_step ellipse_check
 step_tomek <-
   function(recipe, ..., role = NA, trained = FALSE,
            column = NULL, skip = TRUE, seed = sample.int(10^5, 1),
@@ -96,7 +95,6 @@ step_tomek <-
              ))
   }
 
-#' @importFrom recipes step
 step_tomek_new <-
   function(terms, role, trained, column, skip, seed, id) {
     step(
@@ -112,9 +110,6 @@ step_tomek_new <-
     )
   }
 
-#' @importFrom recipes bake prep check_type
-#' @importFrom dplyr select
-#' @importFrom purrr map_lgl
 #' @export
 prep.step_tomek <- function(x, training, info = NULL, ...) {
 
@@ -147,17 +142,12 @@ response_0_1 <- function(x) {
   ifelse(x == names(sort(table(x)))[1], 1, 0)
 }
 # Turns 0-1 coded variable back into factor variable
-response_0_1_to_org <- function(old, new) {
+response_0_1_to_org <- function(old, new, levels) {
   ref <- names(sort(table(old)))
   names(ref) <- c("1", "0")
-  factor(unname(ref[as.character(new)]))
+  factor(unname(ref[as.character(new)]), levels = levels)
 }
 
-#' @importFrom tibble as_tibble tibble
-#' @importFrom withr with_seed
-#' @importFrom unbalanced ubTomek
-#' @importFrom dplyr mutate
-#' @importFrom rlang :=
 #' @export
 bake.step_tomek <- function(object, new_data, ...) {
 
@@ -165,6 +155,7 @@ bake.step_tomek <- function(object, new_data, ...) {
   with_seed(
     seed = object$seed,
     code = {
+      original_levels <- levels(new_data[[object$column]])
       tomek_data <- ubTomek(X = select(new_data, -!!object$column),
                             Y = response_0_1(new_data[[object$column]]),
                             verbose = FALSE)
@@ -174,13 +165,12 @@ bake.step_tomek <- function(object, new_data, ...) {
   new_data0 <- mutate(
     tomek_data$X,
     !!object$column := response_0_1_to_org(new_data[[object$column]],
-                                           tomek_data$Y)
+                                           tomek_data$Y, levels = original_levels)
     )
 
   as_tibble(new_data0[names(new_data)])
 }
 
-#' @importFrom recipes printer terms_select
 #' @export
 print.step_tomek <-
   function(x, width = max(20, options()$width - 26), ...) {
@@ -191,8 +181,6 @@ print.step_tomek <-
 
 #' @rdname step_tomek
 #' @param x A `step_tomek` object.
-#' @importFrom generics tidy
-#' @importFrom recipes sel2char is_trained
 #' @export
 tidy.step_tomek <- function(x, ...) {
   if (is_trained(x)) {

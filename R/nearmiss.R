@@ -81,7 +81,6 @@
 #'   xlim(c(1, 15)) +
 #'   ylim(c(1, 15))
 #'
-#' @importFrom recipes rand_id add_step ellipse_check
 step_nearmiss <-
   function(recipe, ..., role = NA, trained = FALSE,
            column = NULL,  under_ratio = 1, neighbors = 5, skip = TRUE,
@@ -102,7 +101,6 @@ step_nearmiss <-
              ))
   }
 
-#' @importFrom recipes step
 step_nearmiss_new <-
   function(terms, role, trained, column, under_ratio, neighbors, skip, seed,
            id) {
@@ -121,9 +119,6 @@ step_nearmiss_new <-
     )
   }
 
-#' @importFrom recipes bake prep check_type
-#' @importFrom dplyr select
-#' @importFrom purrr map_lgl
 #' @export
 prep.step_nearmiss <- function(x, training, info = NULL, ...) {
 
@@ -151,10 +146,6 @@ prep.step_nearmiss <- function(x, training, info = NULL, ...) {
   )
 }
 
-#' @importFrom tibble as_tibble tibble
-#' @importFrom withr with_seed
-#' @importFrom dplyr mutate
-#' @importFrom rlang :=
 #' @export
 bake.step_nearmiss <- function(object, new_data, ...) {
 
@@ -162,16 +153,17 @@ bake.step_nearmiss <- function(object, new_data, ...) {
   with_seed(
     seed = object$seed,
     code = {
+      original_levels <- levels(new_data[[object$column]])
       new_data <- nearmiss(new_data, object$column,
                            k = object$neighbors,
                            under_ratio = object$under_ratio)
+      new_data[[object$column]] <- factor(new_data[[object$column]], levels = original_levels)
     }
   )
 
   as_tibble(new_data)
 }
 
-#' @importFrom recipes printer terms_select
 #' @export
 print.step_nearmiss <-
   function(x, width = max(20, options()$width - 26), ...) {
@@ -182,8 +174,6 @@ print.step_nearmiss <-
 
 #' @rdname step_nearmiss
 #' @param x A `step_nearmiss` object.
-#' @importFrom generics tidy
-#' @importFrom recipes sel2char is_trained
 #' @export
 tidy.step_nearmiss <- function(x, ...) {
   if (is_trained(x)) {
