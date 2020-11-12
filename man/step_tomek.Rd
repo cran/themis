@@ -3,7 +3,7 @@
 \name{step_tomek}
 \alias{step_tomek}
 \alias{tidy.step_tomek}
-\title{UEnder-sampling by removing Tomek’s links.}
+\title{Under-sampling by removing Tomek’s links.}
 \usage{
 step_tomek(
   recipe,
@@ -88,7 +88,7 @@ ds_rec <- recipe(Class ~ age + height, data = okc) \%>\%
   step_tomek(Class) \%>\%
   prep()
 
-sort(table(juice(ds_rec)$Class, useNA = "always"))
+sort(table(bake(ds_rec, new_data = NULL)$Class, useNA = "always"))
 
 # since `skip` defaults to TRUE, baking the step has no effect
 baked_okc <- bake(ds_rec, new_data = okc)
@@ -105,13 +105,12 @@ ggplot(circle_example, aes(x, y, color = class)) +
 recipe(class ~ ., data = circle_example) \%>\%
   step_tomek(class) \%>\%
   prep() \%>\%
-  juice() \%>\%
+  bake(new_data = NULL) \%>\%
   ggplot(aes(x, y, color = class)) +
   geom_point() +
   labs(title = "With Tomek") +
   xlim(c(1, 15)) +
   ylim(c(1, 15))
-
 }
 \references{
 Tomek. Two modifications of cnn. IEEE Trans. Syst. Man Cybern.,

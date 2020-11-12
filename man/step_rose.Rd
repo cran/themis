@@ -88,7 +88,7 @@ space of minority and majority class example. Using \code{\link[ROSE:ROSE]{ROSE:
 The factor variable used to balance around must only have 2 levels.
 
 The ROSE algorithm works by selecting an observation belonging to class k
-and generates new examples  in its neightborhood is determined by some matrix
+and generates new examples  in its neighborhood is determined by some matrix
 H_k. Smaller values of these arguments have the effect of shrinking the
 entries of the corresponding smoothing matrix H_k, Shrinking would be a
 cautious choice if there is a concern that excessively large neighborhoods
@@ -115,7 +115,7 @@ ds_rec <- recipe(Class ~ age + height, data = okc) \%>\%
   step_rose(Class) \%>\%
   prep()
 
-sort(table(juice(ds_rec)$Class, useNA = "always"))
+sort(table(bake(ds_rec, new_data = NULL)$Class, useNA = "always"))
 
 # since `skip` defaults to TRUE, baking the step has no effect
 baked_okc <- bake(ds_rec, new_data = okc)
@@ -125,7 +125,7 @@ ds_rec2 <- recipe(Class ~ age + height, data = okc) \%>\%
   step_rose(Class, minority_prop = 0.3) \%>\%
   prep()
 
-table(juice(ds_rec2)$Class, useNA = "always")
+table(bake(ds_rec2, new_data = NULL)$Class, useNA = "always")
 
 library(ggplot2)
 
@@ -136,11 +136,10 @@ ggplot(circle_example, aes(x, y, color = class)) +
 recipe(class ~ ., data = circle_example) \%>\%
   step_rose(class) \%>\%
   prep() \%>\%
-  juice() \%>\%
+  bake(new_data = NULL) \%>\%
   ggplot(aes(x, y, color = class)) +
   geom_point() +
   labs(title = "With ROSE")
-
 }
 \references{
 Lunardon, N., Menardi, G., and Torelli, N. (2014). ROSE: a

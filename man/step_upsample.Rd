@@ -104,13 +104,13 @@ orig <- table(okc$diet, useNA = "always")
 
 sort(orig, decreasing = TRUE)
 
-up_rec <- recipe( ~ ., data = okc) \%>\%
+up_rec <- recipe(~., data = okc) \%>\%
   # Bring the minority levels up to about 200 each
   # 200/16562 is approx 0.0121
   step_upsample(diet, over_ratio = 0.0121) \%>\%
   prep(training = okc, retain = TRUE)
 
-training <- table(juice(up_rec)$diet, useNA = "always")
+training <- table(bake(up_rec, new_data = NULL)$diet, useNA = "always")
 
 # Since `skip` defaults to TRUE, baking the step has no effect
 baked_okc <- bake(up_rec, new_data = okc)
@@ -132,11 +132,11 @@ ggplot(circle_example, aes(x, y, color = class)) +
   labs(title = "Without upsample")
 
 recipe(class ~ ., data = circle_example) \%>\%
-  step_nearmiss(class) \%>\%
+  step_upsample(class) \%>\%
   prep() \%>\%
-  juice() \%>\%
+  bake(new_data = NULL) \%>\%
   ggplot(aes(x, y, color = class)) +
-  geom_jitter() +
+  geom_jitter(width = 0.1, height = 0.1) +
   labs(title = "With upsample (with jittering)")
 }
 \concept{preprocessing}

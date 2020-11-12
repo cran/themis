@@ -46,7 +46,7 @@ frequency as the least occurring level. A value of 2 would mean
 that the majority levels will have (at most) (approximately)
 twice as many rows than the minority level.}
 
-\item{neighbors}{An integer. Number of nearest neighbours that are used
+\item{neighbors}{An integer. Number of nearest neighbor that are used
 to generate the new examples of the minority class.}
 
 \item{skip}{A logical. Should the step be skipped when the
@@ -100,7 +100,7 @@ ds_rec <- recipe(Class ~ age + height, data = okc) \%>\%
   step_nearmiss(Class) \%>\%
   prep()
 
-sort(table(juice(ds_rec)$Class, useNA = "always"))
+sort(table(bake(ds_rec, new_data = NULL)$Class, useNA = "always"))
 
 # since `skip` defaults to TRUE, baking the step has no effect
 baked_okc <- bake(ds_rec, new_data = okc)
@@ -117,13 +117,12 @@ ggplot(circle_example, aes(x, y, color = class)) +
 recipe(class ~ ., data = circle_example) \%>\%
   step_nearmiss(class) \%>\%
   prep() \%>\%
-  juice() \%>\%
+  bake(new_data = NULL) \%>\%
   ggplot(aes(x, y, color = class)) +
   geom_point() +
   labs(title = "With NEARMISS") +
   xlim(c(1, 15)) +
   ylim(c(1, 15))
-
 }
 \references{
 Inderjeet Mani and I Zhang. knn approach to unbalanced data

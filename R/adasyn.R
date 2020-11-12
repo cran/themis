@@ -14,7 +14,7 @@
 #'  created.
 #' @param column A character string of the variable name that will
 #'  be populated (eventually) by the `...` selectors.
-#' @param neighbors An integer. Number of nearest neighbours that are used
+#' @param neighbors An integer. Number of nearest neighbor that are used
 #'  to generate the new examples of the minority class.
 #' @param seed An integer that will be used as the seed when
 #' applied.
@@ -54,7 +54,7 @@
 #'   step_adasyn(Class) %>%
 #'   prep()
 #'
-#' sort(table(juice(ds_rec)$Class, useNA = "always"))
+#' sort(table(bake(ds_rec, new_data = NULL)$Class, useNA = "always"))
 #'
 #' # since `skip` defaults to TRUE, baking the step has no effect
 #' baked_okc <- bake(ds_rec, new_data = okc)
@@ -69,29 +69,29 @@
 #' recipe(class ~ ., data = circle_example) %>%
 #'   step_adasyn(class) %>%
 #'   prep() %>%
-#'   juice() %>%
+#'   bake(new_data = NULL) %>%
 #'   ggplot(aes(x, y, color = class)) +
 #'   geom_point() +
 #'   labs(title = "With ADASYN")
-#'
 step_adasyn <-
   function(recipe, ..., role = NA, trained = FALSE, column = NULL,
            over_ratio = 1, neighbors = 5, skip = TRUE,
            seed = sample.int(10^5, 1), id = rand_id("adasyn")) {
-
-    add_step(recipe,
-             step_adasyn_new(
-               terms = ellipse_check(...),
-               role = role,
-               trained = trained,
-               column = column,
-               over_ratio = over_ratio,
-               neighbors = neighbors,
-               predictors = NULL,
-               skip = skip,
-               seed = seed,
-               id = id
-             ))
+    add_step(
+      recipe,
+      step_adasyn_new(
+        terms = ellipse_check(...),
+        role = role,
+        trained = trained,
+        column = column,
+        over_ratio = over_ratio,
+        neighbors = neighbors,
+        predictors = NULL,
+        skip = skip,
+        seed = seed,
+        id = id
+      )
+    )
   }
 
 step_adasyn_new <-
@@ -115,19 +115,21 @@ step_adasyn_new <-
 
 #' @export
 prep.step_adasyn <- function(x, training, info = NULL, ...) {
-
   col_name <- terms_select(x$terms, info = info)
-  if (length(col_name) != 1)
+  if (length(col_name) != 1) {
     rlang::abort("Please select a single factor variable.")
-  if (!is.factor(training[[col_name]]))
+  }
+  if (!is.factor(training[[col_name]])) {
     rlang::abort(paste0(col_name, " should be a factor variable."))
+  }
 
   predictors <- setdiff(info$variable[info$role == "predictor"], col_name)
 
   check_type(training[, predictors], TRUE)
 
-  if (any(map_lgl(training, ~ any(is.na(.x)))))
+  if (any(map_lgl(training, ~ any(is.na(.x))))) {
     rlang::abort("`NA` values are not allowed when using `step_adasyn`")
+  }
 
   step_adasyn_new(
     terms = x$terms,
@@ -145,7 +147,6 @@ prep.step_adasyn <- function(x, training, info = NULL, ...) {
 
 #' @export
 bake.step_adasyn <- function(object, new_data, ...) {
-
   new_data <- as.data.frame(new_data)
 
   predictor_data <- new_data[, unique(c(object$predictors, object$column))]
@@ -158,7 +159,8 @@ bake.step_adasyn <- function(object, new_data, ...) {
         predictor_data,
         object$column,
         k = object$neighbors,
-        over_ratio = object$over_ratio)
+        over_ratio = object$over_ratio
+      )
     }
   )
   new_data <- na_splice(new_data, synthetic_data, object)
@@ -187,4 +189,16 @@ tidy.step_adasyn <- function(x, ...) {
   }
   res$id <- x$id
   res
+}
+
+
+#' S3 methods for tracking which additional packages are needed for steps.
+#'
+#' @param x A recipe step
+#' @return A character vector
+#' @rdname required_pkgs.step
+#' @keywords internal
+#' @export
+required_pkgs.step_adasyn <- function(x, ...) {
+  c("themis")
 }

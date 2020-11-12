@@ -38,7 +38,7 @@ frequency as the least occurring level. A value of 2 would mean
 that the majority levels will have (at most) (approximately)
 twice as many rows than the minority level.}
 
-\item{ratio}{Depracated argument; same as \code{under_ratio}}
+\item{ratio}{Deprecated argument; same as \code{under_ratio}}
 
 \item{role}{Not used by this step since no new variables are
 created.}
@@ -107,11 +107,11 @@ data(okc)
 
 sort(table(okc$diet, useNA = "always"))
 
-ds_rec <- recipe( ~ ., data = okc) \%>\%
+ds_rec <- recipe(~., data = okc) \%>\%
   step_downsample(diet) \%>\%
   prep(training = okc, retain = TRUE)
 
-sort(table(juice(ds_rec)$diet, useNA = "always"))
+sort(table(bake(ds_rec, new_data = NULL)$diet, useNA = "always"))
 
 # since `skip` defaults to TRUE, baking the step has no effect
 baked_okc <- bake(ds_rec, new_data = okc)
