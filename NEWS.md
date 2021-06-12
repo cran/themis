@@ -1,3 +1,7 @@
+# themis 0.1.4
+
+* export `smote()`, `adasyn()`, and `bsmote()` functions to users.
+
 # themis 0.1.3
 
 * Steps that use nearest neighbors gives cleaner errors.

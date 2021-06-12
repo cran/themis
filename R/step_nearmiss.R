@@ -1,10 +1,13 @@
-#' Adaptive Synthetic Sampling Approach
+#' Under-sampling by removing points near other classes.
 #'
-#' `step_adasyn` creates a *specification* of a recipe
-#'  step that generates synthetic positive instances using ADASYN algorithm.
+#' `step_nearmiss` creates a *specification* of a recipe
+#'  step that removes majority class instances by undersampling points
+#'  in the majority class based on their distance to other points in the
+#'  same class.
 #'
 #' @inheritParams recipes::step_center
-#' @inheritParams step_upsample
+#' @inheritParams step_downsample
+#' @inheritParams step_smote
 #' @param ... One or more selector functions to choose which
 #'  variable is used to sample the data. See [selections()]
 #'  for more details. The selection should result in _single
@@ -14,8 +17,6 @@
 #'  created.
 #' @param column A character string of the variable name that will
 #'  be populated (eventually) by the `...` selectors.
-#' @param neighbors An integer. Number of nearest neighbor that are used
-#'  to generate the new examples of the minority class.
 #' @param seed An integer that will be used as the seed when
 #' applied.
 #' @return An updated version of `recipe` with the new step
@@ -24,6 +25,9 @@
 #'  the variable used to sample.
 #'
 #' @details
+#' This methods retained the points form the majority classes which has the
+#' smallest mean distance to the k nearest points in the other classes.
+#'
 #' All columns in the data are sampled and returned by [juice()]
 #'  and [bake()].
 #'
@@ -33,10 +37,9 @@
 #'  option `skip = TRUE` so that the extra sampling is _not_
 #'  conducted outside of the training set.
 #'
-#' @references He, H., Bai, Y., Garcia, E. and Li, S. 2008. ADASYN: Adaptive
-#'  synthetic sampling approach for imbalanced learning. Proceedings of
-#'  IJCNN 2008. (IEEE World Congress on Computational Intelligence). IEEE
-#'  International Joint Conference. pp.1322-1328.
+#' @references Inderjeet Mani and I Zhang. knn approach to unbalanced data
+#' distributions: a case study involving information extraction. In Proceedings
+#' of workshop on learning from imbalanced datasets, 2003.
 #'
 #' @keywords datagen
 #' @concept preprocessing
@@ -51,7 +54,7 @@
 #'
 #' ds_rec <- recipe(Class ~ age + height, data = okc) %>%
 #'   step_meanimpute(all_predictors()) %>%
-#'   step_adasyn(Class) %>%
+#'   step_nearmiss(Class) %>%
 #'   prep()
 #'
 #' sort(table(bake(ds_rec, new_data = NULL)$Class, useNA = "always"))
@@ -64,27 +67,32 @@
 #'
 #' ggplot(circle_example, aes(x, y, color = class)) +
 #'   geom_point() +
-#'   labs(title = "Without ADASYN")
+#'   labs(title = "Without NEARMISS") +
+#'   xlim(c(1, 15)) +
+#'   ylim(c(1, 15))
 #'
 #' recipe(class ~ ., data = circle_example) %>%
-#'   step_adasyn(class) %>%
+#'   step_nearmiss(class) %>%
 #'   prep() %>%
 #'   bake(new_data = NULL) %>%
 #'   ggplot(aes(x, y, color = class)) +
 #'   geom_point() +
-#'   labs(title = "With ADASYN")
-step_adasyn <-
-  function(recipe, ..., role = NA, trained = FALSE, column = NULL,
-           over_ratio = 1, neighbors = 5, skip = TRUE,
-           seed = sample.int(10^5, 1), id = rand_id("adasyn")) {
+#'   labs(title = "With NEARMISS") +
+#'   xlim(c(1, 15)) +
+#'   ylim(c(1, 15))
+step_nearmiss <-
+  function(recipe, ..., role = NA, trained = FALSE,
+           column = NULL, under_ratio = 1, neighbors = 5, skip = TRUE,
+           seed = sample.int(10^5, 1),
+           id = rand_id("nearmiss")) {
     add_step(
       recipe,
-      step_adasyn_new(
+      step_nearmiss_new(
         terms = ellipse_check(...),
         role = role,
         trained = trained,
         column = column,
-        over_ratio = over_ratio,
+        under_ratio = under_ratio,
         neighbors = neighbors,
         predictors = NULL,
         skip = skip,
@@ -94,16 +102,16 @@ step_adasyn <-
     )
   }
 
-step_adasyn_new <-
-  function(terms, role, trained, column, over_ratio, neighbors, predictors,
+step_nearmiss_new <-
+  function(terms, role, trained, column, under_ratio, neighbors, predictors,
            skip, seed, id) {
     step(
-      subclass = "adasyn",
+      subclass = "nearmiss",
       terms = terms,
       role = role,
       trained = trained,
       column = column,
-      over_ratio = over_ratio,
+      under_ratio = under_ratio,
       neighbors = neighbors,
       predictors = predictors,
       skip = skip,
@@ -114,7 +122,7 @@ step_adasyn_new <-
   }
 
 #' @export
-prep.step_adasyn <- function(x, training, info = NULL, ...) {
+prep.step_nearmiss <- function(x, training, info = NULL, ...) {
   col_name <- terms_select(x$terms, info = info)
   if (length(col_name) != 1) {
     rlang::abort("Please select a single factor variable.")
@@ -128,15 +136,15 @@ prep.step_adasyn <- function(x, training, info = NULL, ...) {
   check_type(training[, predictors], TRUE)
 
   if (any(map_lgl(training, ~ any(is.na(.x))))) {
-    rlang::abort("`NA` values are not allowed when using `step_adasyn`")
+    rlang::abort("`NA` values are not allowed when using `step_nearmiss`")
   }
 
-  step_adasyn_new(
+  step_nearmiss_new(
     terms = x$terms,
     role = x$role,
     trained = TRUE,
     column = col_name,
-    over_ratio = x$over_ratio,
+    under_ratio = x$under_ratio,
     neighbors = x$neighbors,
     predictors = predictors,
     skip = x$skip,
@@ -146,40 +154,42 @@ prep.step_adasyn <- function(x, training, info = NULL, ...) {
 }
 
 #' @export
-bake.step_adasyn <- function(object, new_data, ...) {
-  new_data <- as.data.frame(new_data)
+bake.step_nearmiss <- function(object, new_data, ...) {
 
-  predictor_data <- new_data[, unique(c(object$predictors, object$column))]
+  ignore_vars <- setdiff(names(new_data), c(object$predictors, object$column))
 
-  # adasyn with seed for reproducibility
+  # nearmiss with seed for reproducibility
   with_seed(
     seed = object$seed,
     code = {
-      synthetic_data <- adasyn(
-        predictor_data,
-        object$column,
+      original_levels <- levels(new_data[[object$column]])
+      new_data <- nearmiss_impl(
+        df = new_data,
+        var = object$column,
+        ignore_vars = ignore_vars,
         k = object$neighbors,
-        over_ratio = object$over_ratio
+        under_ratio = object$under_ratio
       )
+      new_data[[object$column]] <- factor(new_data[[object$column]],
+                                          levels = original_levels)
     }
   )
-  new_data <- na_splice(new_data, synthetic_data, object)
 
   as_tibble(new_data)
 }
 
 #' @export
-print.step_adasyn <-
+print.step_nearmiss <-
   function(x, width = max(20, options()$width - 26), ...) {
-    cat("adasyn based on ", sep = "")
+    cat("NEARMISS-1 based on ", sep = "")
     printer(x$column, x$terms, x$trained, width = width)
     invisible(x)
   }
 
-#' @rdname step_adasyn
-#' @param x A `step_adasyn` object.
+#' @rdname step_nearmiss
+#' @param x A `step_nearmiss` object.
 #' @export
-tidy.step_adasyn <- function(x, ...) {
+tidy.step_nearmiss <- function(x, ...) {
   if (is_trained(x)) {
     res <- tibble(terms = x$column)
   }
@@ -192,13 +202,9 @@ tidy.step_adasyn <- function(x, ...) {
 }
 
 
-#' S3 methods for tracking which additional packages are needed for steps.
-#'
-#' @param x A recipe step
-#' @return A character vector
+
 #' @rdname required_pkgs.step
-#' @keywords internal
 #' @export
-required_pkgs.step_adasyn <- function(x, ...) {
+required_pkgs.step_nearmiss <- function(x, ...) {
   c("themis")
 }

@@ -10,7 +10,7 @@ check_na <- function(data, step) {
     rlang::abort(paste0(
       "`", step,
       "` cannot have any missing values. NAs found ind: ",
-      paste(names(na_cols), collapse = ", "), "."
+      paste(names(na_cols)[na_cols], collapse = ", "), "."
     ))
   }
 }
@@ -19,6 +19,19 @@ check_2_levels_only <- function(data, col_name) {
   if (length(levels(data[[col_name]])) != 2) {
     rlang::abort(paste0("`", col_name, "`` must only have 2 levels."))
   }
+}
+
+check_numeric <- function(dat) {
+    all_good <- vapply(dat, is.numeric, logical(1))
+    label <- "numeric"
+
+  if (!all(all_good))
+    rlang::abort(
+      paste0(
+        "All columns for this function should be numeric."
+      )
+    )
+  invisible(all_good)
 }
 
 
