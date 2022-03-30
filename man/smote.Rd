@@ -2,7 +2,7 @@
 % Please edit documentation in R/smote_impl.R
 \name{smote}
 \alias{smote}
-\title{SMOTE algorithm}
+\title{SMOTE Algorithm}
 \usage{
 smote(df, var, k = 5, over_ratio = 1)
 }
@@ -39,14 +39,26 @@ The parameter \code{neighbors} controls how many of these neighbor are used.
 All columns used in this function must be numeric with no missing data.
 }
 \examples{
-smote(circle_example, var = "class")
+circle_numeric <- circle_example[, c("x", "y", "class")]
 
-smote(circle_example, var = "class", k = 10)
+res <- smote(circle_numeric, var = "class")
 
-smote(circle_example, var = "class", over_ratio = 0.8)
+res <- smote(circle_numeric, var = "class", k = 10)
+
+res <- smote(circle_numeric, var = "class", over_ratio = 0.8)
 }
 \references{
 Chawla, N. V., Bowyer, K. W., Hall, L. O., and Kegelmeyer,
 W. P. (2002). Smote: Synthetic minority over-sampling technique.
 Journal of Artificial Intelligence Research, 16:321-357.
 }
+\seealso{
+\code{\link[=step_smote]{step_smote()}} for step function of this method
+
+Other Direct Implementations: 
+\code{\link{adasyn}()},
+\code{\link{bsmote}()},
+\code{\link{nearmiss}()},
+\code{\link{smotenc}()}
+}
+\concept{Direct Implementations}

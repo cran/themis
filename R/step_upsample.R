@@ -30,10 +30,7 @@
 #'  the variable used to sample.
 #' @details
 #' Up-sampling is intended to be performed on the _training_ set
-#'  alone. For this reason, the default is `skip = TRUE`. It is
-#'  advisable to use `prep(recipe, retain = TRUE)` when preparing
-#'  the recipe; in this way [juice()] can be used to obtain the
-#'  up-sampled version of the data.
+#'  alone. For this reason, the default is `skip = TRUE`.
 #'
 #' If there are missing values in the factor variable that is used
 #'  to define the sampling, missing data are selected at random in
@@ -47,39 +44,47 @@
 #' All columns in the data are sampled and returned by [juice()]
 #'  and [bake()].
 #'
-#' @keywords datagen
-#' @concept preprocessing
-#' @concept subsampling
+#' # Tidying
+#'
+#' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
+#' (the selectors or variables selected) will be returned.
+#'
+#' @family Steps for over-sampling
+#'
 #' @export
 #' @examples
 #' library(recipes)
 #' library(modeldata)
-#' data(okc)
+#' data(hpc_data)
 #'
-#' orig <- table(okc$diet, useNA = "always")
+#' hpc_data0 <- hpc_data %>%
+#'   select(-protocol, -day)
 #'
-#' sort(orig, decreasing = TRUE)
+#' orig <- count(hpc_data0, class, name = "orig")
+#' orig
 #'
-#' up_rec <- recipe(~., data = okc) %>%
-#'   # Bring the minority levels up to about 200 each
-#'   # 200/16562 is approx 0.0121
-#'   step_upsample(diet, over_ratio = 0.0121) %>%
-#'   prep(training = okc, retain = TRUE)
+#' up_rec <- recipe(class ~ ., data = hpc_data0) %>%
+#'   # Bring the minority levels up to about 1000 each
+#'   # 1000/2211 is approx 0.4523
+#'   step_upsample(class, over_ratio = 0.4523) %>%
+#'   prep()
 #'
-#' training <- table(bake(up_rec, new_data = NULL)$diet, useNA = "always")
+#' training <- up_rec %>%
+#'   bake(new_data = NULL) %>%
+#'   count(class, name = "training")
+#' training
 #'
 #' # Since `skip` defaults to TRUE, baking the step has no effect
-#' baked_okc <- bake(up_rec, new_data = okc)
-#' baked <- table(baked_okc$diet, useNA = "always")
+#' baked <- up_rec %>%
+#'   bake(new_data = hpc_data0) %>%
+#'   count(class, name = "baked")
+#' baked
 #'
 #' # Note that if the original data contained more rows than the
 #' # target n (= ratio * majority_n), the data are left alone:
-#' data.frame(
-#'   level = names(orig),
-#'   orig_freq = as.vector(orig),
-#'   train_freq = as.vector(training),
-#'   baked_freq = as.vector(baked)
-#' )
+#' orig %>%
+#'   left_join(training, by = "class") %>%
+#'   left_join(baked, by = "class")
 #'
 #' library(ggplot2)
 #'
@@ -87,7 +92,7 @@
 #'   geom_point() +
 #'   labs(title = "Without upsample")
 #'
-#' recipe(class ~ ., data = circle_example) %>%
+#' recipe(class ~ x + y, data = circle_example) %>%
 #'   step_upsample(class) %>%
 #'   prep() %>%
 #'   bake(new_data = NULL) %>%
@@ -95,26 +100,23 @@
 #'   geom_jitter(width = 0.1, height = 0.1) +
 #'   labs(title = "With upsample (with jittering)")
 step_upsample <-
-  function(recipe, ..., over_ratio = 1, ratio = NA, role = NA, trained = FALSE,
-           column = NULL, target = NA, skip = TRUE,
+  function(recipe, ..., over_ratio = 1, ratio = deprecated(), role = NA,
+           trained = FALSE, column = NULL, target = NA, skip = TRUE,
            seed = sample.int(10^5, 1),
            id = rand_id("upsample")) {
-    if (!is.na(ratio) & all(over_ratio != ratio)) {
-      message(
-        paste(
-          "The `ratio` argument is now deprecated in favor of `over_ratio`.",
-          "`ratio` will be removed in a subsequent version."
-        )
+
+    if (lifecycle::is_present(ratio)) {
+      lifecycle::deprecate_stop(
+        "0.2.0",
+        "step_downsample(ratio = )",
+        "step_downsample(over_ratio = )"
       )
-      if (!is.na(ratio)) {
-        over_ratio <- ratio
-      }
     }
 
     add_step(
       recipe,
       step_upsample_new(
-        terms = ellipse_check(...),
+        terms = enquos(...),
         over_ratio = over_ratio,
         ratio = ratio,
         role = role,
@@ -149,17 +151,20 @@ step_upsample_new <-
 
 #' @export
 prep.step_upsample <- function(x, training, info = NULL, ...) {
-  col_name <- terms_select(x$terms, info = info)
-  if (length(col_name) != 1) {
-    rlang::abort("Please select a single factor variable.")
-  }
-  if (!is.factor(training[[col_name]])) {
-    rlang::abort(paste0(col_name, " should be a factor variable."))
+  col_name <- recipes_eval_select(x$terms, training, info)
+  if (length(col_name) > 1) {
+    rlang::abort("The selector should select at most a single variable")
   }
 
+  if (length(col_name) == 0) {
+    majority <- 0
+  } else {
+    check_column_factor(training, col_name)
+    obs_freq <- table(training[[col_name]])
+    majority <- max(obs_freq)
+  }
 
-  obs_freq <- table(training[[col_name]])
-  majority <- max(obs_freq)
+  check_na(select(training, all_of(col_name)), "step_upsample")
 
   step_upsample_new(
     terms = x$terms,
@@ -189,6 +194,11 @@ supsamp <- function(x, num) {
 
 #' @export
 bake.step_upsample <- function(object, new_data, ...) {
+  if (length(object$column) == 0L) {
+    # Empty selection
+    return(new_data)
+  }
+
   if (any(is.na(new_data[[object$column]]))) {
     missing <- new_data[is.na(new_data[[object$column]]), ]
   } else {
@@ -210,21 +220,21 @@ bake.step_upsample <- function(object, new_data, ...) {
   as_tibble(new_data)
 }
 
+#' @export
 print.step_upsample <-
   function(x, width = max(20, options()$width - 26), ...) {
-    cat("Up-sampling based on ", sep = "")
-    printer(x$column, x$terms, x$trained, width = width)
+    title <- "Up-sampling based on "
+    print_step(x$column, x$terms, x$trained, title, width)
     invisible(x)
   }
 
-#' @rdname step_upsample
+#' @rdname tidy.recipe
 #' @param x A `step_upsample` object.
 #' @export
 tidy.step_upsample <- function(x, ...) {
   if (is_trained(x)) {
-    res <- tibble(terms = x$column)
-  }
-  else {
+    res <- tibble(terms = unname(x$column))
+  } else {
     term_names <- sel2char(x$terms)
     res <- tibble(terms = unname(term_names))
   }

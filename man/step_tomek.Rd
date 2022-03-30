@@ -2,8 +2,7 @@
 % Please edit documentation in R/step_tomek.R
 \name{step_tomek}
 \alias{step_tomek}
-\alias{tidy.step_tomek}
-\title{Under-sampling by removing Tomek’s links.}
+\title{Remove Tomek’s Links}
 \usage{
 step_tomek(
   recipe,
@@ -15,8 +14,6 @@ step_tomek(
   seed = sample.int(10^5, 1),
   id = rand_id("tomek")
 )
-
-\method{tidy}{step_tomek}(x, ...)
 }
 \arguments{
 \item{recipe}{A recipe object. The step will be added to the
@@ -38,18 +35,16 @@ preprocessing have been estimated.}
 be populated (eventually) by the \code{...} selectors.}
 
 \item{skip}{A logical. Should the step be skipped when the
-recipe is baked by \code{\link[recipes:bake]{bake.recipe()}}? While all operations are baked
-when \code{\link[recipes:prep]{prep.recipe()}} is run, some operations may not be able to be
+recipe is baked by \code{\link[recipes:bake]{bake()}}? While all operations are baked
+when \code{\link[recipes:prep]{prep()}} is run, some operations may not be able to be
 conducted on new data (e.g. processing the outcome variable(s)).
 Care should be taken when using \code{skip = TRUE} as it may affect
-the computations for subsequent operations}
+the computations for subsequent operations.}
 
 \item{seed}{An integer that will be used as the seed when
 applied.}
 
 \item{id}{A character string that is unique to this step to identify it.}
-
-\item{x}{A \code{step_tomek} object.}
 }
 \value{
 An updated version of \code{recipe} with the new step
@@ -76,23 +71,41 @@ When used in modeling, users should strongly consider using the
 option \code{skip = TRUE} so that the extra sampling is \emph{not}
 conducted outside of the training set.
 }
+\section{Tidying}{
+When you \code{\link[=tidy.recipe]{tidy()}} this step, a tibble with columns \code{terms}
+(the selectors or variables selected) will be returned.
+}
+
 \examples{
 library(recipes)
 library(modeldata)
-data(okc)
+data(hpc_data)
 
-sort(table(okc$Class, useNA = "always"))
+hpc_data0 <- hpc_data \%>\%
+  mutate(class = factor(class == "VF", labels = c("not VF", "VF"))) \%>\%
+  select(-protocol, -day)
 
-ds_rec <- recipe(Class ~ age + height, data = okc) \%>\%
-  step_meanimpute(all_predictors()) \%>\%
-  step_tomek(Class) \%>\%
+orig <- count(hpc_data0, class, name = "orig")
+orig
+
+up_rec <- recipe(class ~ ., data = hpc_data0) \%>\%
+  step_tomek(class) \%>\%
   prep()
 
-sort(table(bake(ds_rec, new_data = NULL)$Class, useNA = "always"))
+training <- up_rec \%>\%
+  bake(new_data = NULL) \%>\%
+  count(class, name = "training")
+training
 
-# since `skip` defaults to TRUE, baking the step has no effect
-baked_okc <- bake(ds_rec, new_data = okc)
-table(baked_okc$Class, useNA = "always")
+# Since `skip` defaults to TRUE, baking the step has no effect
+baked <- up_rec \%>\%
+  bake(new_data = hpc_data0) \%>\%
+  count(class, name = "baked")
+baked
+
+orig \%>\%
+  left_join(training, by = "class") \%>\%
+  left_join(baked, by = "class")
 
 library(ggplot2)
 
@@ -102,7 +115,7 @@ ggplot(circle_example, aes(x, y, color = class)) +
   xlim(c(1, 15)) +
   ylim(c(1, 15))
 
-recipe(class ~ ., data = circle_example) \%>\%
+recipe(class ~ x + y, data = circle_example) \%>\%
   step_tomek(class) \%>\%
   prep() \%>\%
   bake(new_data = NULL) \%>\%
@@ -116,6 +129,9 @@ recipe(class ~ ., data = circle_example) \%>\%
 Tomek. Two modifications of cnn. IEEE Trans. Syst. Man Cybern.,
 6:769-772, 1976.
 }
-\concept{preprocessing}
-\concept{subsampling}
-\keyword{datagen}
+\seealso{
+Other Steps for under-sampling: 
+\code{\link{step_downsample}()},
+\code{\link{step_nearmiss}()}
+}
+\concept{Steps for under-sampling}

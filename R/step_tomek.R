@@ -1,4 +1,4 @@
-#' Under-sampling by removing Tomek’s links.
+#' Remove Tomek’s Links
 #'
 #' `step_tomek` creates a *specification* of a recipe
 #'  step that removes majority class instances of tomek links. Using
@@ -35,30 +35,47 @@
 #'  option `skip = TRUE` so that the extra sampling is _not_
 #'  conducted outside of the training set.
 #'
+#' # Tidying
+#'
+#' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
+#' (the selectors or variables selected) will be returned.
+#'
 #' @references Tomek. Two modifications of cnn. IEEE Trans. Syst. Man Cybern.,
 #'  6:769-772, 1976.
 #'
-#' @keywords datagen
-#' @concept preprocessing
-#' @concept subsampling
+#' @family Steps for under-sampling
+#'
 #' @export
 #' @examples
 #' library(recipes)
 #' library(modeldata)
-#' data(okc)
+#' data(hpc_data)
 #'
-#' sort(table(okc$Class, useNA = "always"))
+#' hpc_data0 <- hpc_data %>%
+#'   mutate(class = factor(class == "VF", labels = c("not VF", "VF"))) %>%
+#'   select(-protocol, -day)
 #'
-#' ds_rec <- recipe(Class ~ age + height, data = okc) %>%
-#'   step_meanimpute(all_predictors()) %>%
-#'   step_tomek(Class) %>%
+#' orig <- count(hpc_data0, class, name = "orig")
+#' orig
+#'
+#' up_rec <- recipe(class ~ ., data = hpc_data0) %>%
+#'   step_tomek(class) %>%
 #'   prep()
 #'
-#' sort(table(bake(ds_rec, new_data = NULL)$Class, useNA = "always"))
+#' training <- up_rec %>%
+#'   bake(new_data = NULL) %>%
+#'   count(class, name = "training")
+#' training
 #'
-#' # since `skip` defaults to TRUE, baking the step has no effect
-#' baked_okc <- bake(ds_rec, new_data = okc)
-#' table(baked_okc$Class, useNA = "always")
+#' # Since `skip` defaults to TRUE, baking the step has no effect
+#' baked <- up_rec %>%
+#'   bake(new_data = hpc_data0) %>%
+#'   count(class, name = "baked")
+#' baked
+#'
+#' orig %>%
+#'   left_join(training, by = "class") %>%
+#'   left_join(baked, by = "class")
 #'
 #' library(ggplot2)
 #'
@@ -68,7 +85,7 @@
 #'   xlim(c(1, 15)) +
 #'   ylim(c(1, 15))
 #'
-#' recipe(class ~ ., data = circle_example) %>%
+#' recipe(class ~ x + y, data = circle_example) %>%
 #'   step_tomek(class) %>%
 #'   prep() %>%
 #'   bake(new_data = NULL) %>%
@@ -84,10 +101,11 @@ step_tomek <-
     add_step(
       recipe,
       step_tomek_new(
-        terms = ellipse_check(...),
+        terms = enquos(...),
         role = role,
         trained = trained,
         column = column,
+        predictors = NULL,
         skip = skip,
         seed = seed,
         id = id
@@ -96,13 +114,14 @@ step_tomek <-
   }
 
 step_tomek_new <-
-  function(terms, role, trained, column, skip, seed, id) {
+  function(terms, role, trained, column, predictors, skip, seed, id) {
     step(
       subclass = "tomek",
       terms = terms,
       role = role,
       trained = trained,
       column = column,
+      predictors = predictors,
       skip = skip,
       id = id,
       seed = seed,
@@ -112,26 +131,26 @@ step_tomek_new <-
 
 #' @export
 prep.step_tomek <- function(x, training, info = NULL, ...) {
-  col_name <- terms_select(x$terms, info = info)
-  if (length(col_name) != 1) {
-    rlang::abort("Please select a single factor variable.")
-  }
-  if (!is.factor(training[[col_name]])) {
-    rlang::abort(paste0(col_name, " should be a factor variable."))
+  col_name <- recipes_eval_select(x$terms, training, info)
+  if (length(col_name) > 1) {
+    rlang::abort("The selector should select at most a single variable")
   }
 
-  check_2_levels_only(training, col_name)
-  check_type(select(training, -col_name), TRUE)
-
-  if (any(map_lgl(training, ~ any(is.na(.x))))) {
-    rlang::abort("`NA` values are not allowed when using `step_tomek`")
+  if (length(col_name) == 1) {
+    check_column_factor(training, col_name)
+    check_2_levels_only(training, col_name)
   }
+
+  predictors <- setdiff(info$variable[info$role == "predictor"], col_name)
+  check_type(training[, predictors], TRUE)
+  check_na(select(training, all_of(c(col_name, predictors))), "step_tomek")
 
   step_tomek_new(
     terms = x$terms,
     role = x$role,
     trained = TRUE,
     column = col_name,
+    predictors = predictors,
     skip = x$skip,
     seed = x$seed,
     id = x$id
@@ -152,48 +171,48 @@ response_0_1_to_org <- function(old, new, levels) {
 
 #' @export
 bake.step_tomek <- function(object, new_data, ...) {
+  if (length(object$column) == 0L) {
+    # Empty selection
+    return(new_data)
+  }
+
+  predictor_data <- new_data[, unique(c(object$predictors, object$column))]
 
   # tomek with seed for reproducibility
   with_seed(
     seed = object$seed,
     code = {
-      original_levels <- levels(new_data[[object$column]])
+      original_levels <- levels(predictor_data[[object$column]])
       tomek_data <- ubTomek(
-        X = select(new_data, -!!object$column),
-        Y = response_0_1(new_data[[object$column]]),
+        X = select(predictor_data, -!!object$column),
+        Y = response_0_1(predictor_data[[object$column]]),
         verbose = FALSE
       )
     }
   )
 
-  new_data0 <- mutate(
-    tomek_data$X,
-    !!object$column := response_0_1_to_org(
-      new_data[[object$column]],
-      tomek_data$Y,
-      levels = original_levels
-    )
-  )
+  if (length(tomek_data$id.rm) > 0) {
+    new_data <- new_data[-tomek_data$id.rm, ]
+  }
 
-  as_tibble(new_data0[names(new_data)])
+  new_data
 }
 
 #' @export
 print.step_tomek <-
   function(x, width = max(20, options()$width - 26), ...) {
-    cat("Tomek based on ", sep = "")
-    printer(x$column, x$terms, x$trained, width = width)
+    title <- "Tomek based on "
+    print_step(x$column, x$terms, x$trained, title, width)
     invisible(x)
   }
 
-#' @rdname step_tomek
+#' @rdname tidy.recipe
 #' @param x A `step_tomek` object.
 #' @export
 tidy.step_tomek <- function(x, ...) {
   if (is_trained(x)) {
-    res <- tibble(terms = x$column)
-  }
-  else {
+    res <- tibble(terms = unname(x$column))
+  } else {
     term_names <- sel2char(x$terms)
     res <- tibble(terms = unname(term_names))
   }

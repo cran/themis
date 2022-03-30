@@ -1,4 +1,4 @@
-#' Adaptive Synthetic Sampling Approach
+#' Apply Adaptive Synthetic Algorithm
 #'
 #' `step_adasyn` creates a *specification* of a recipe
 #'  step that generates synthetic positive instances using ADASYN algorithm.
@@ -33,32 +33,53 @@
 #'  option `skip = TRUE` so that the extra sampling is _not_
 #'  conducted outside of the training set.
 #'
+#' # Tidying
+#'
+#' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
+#' (the selectors or variables selected) will be returned.
+#'
 #' @references He, H., Bai, Y., Garcia, E. and Li, S. 2008. ADASYN: Adaptive
 #'  synthetic sampling approach for imbalanced learning. Proceedings of
 #'  IJCNN 2008. (IEEE World Congress on Computational Intelligence). IEEE
 #'  International Joint Conference. pp.1322-1328.
 #'
-#' @keywords datagen
-#' @concept preprocessing
-#' @concept subsampling
+#' @seealso [adasyn()] for direct implementation
+#' @family Steps for over-sampling
+#'
 #' @export
 #' @examples
 #' library(recipes)
 #' library(modeldata)
-#' data(okc)
+#' data(hpc_data)
 #'
-#' sort(table(okc$Class, useNA = "always"))
+#' hpc_data0 <- hpc_data %>%
+#'   select(-protocol, -day)
 #'
-#' ds_rec <- recipe(Class ~ age + height, data = okc) %>%
-#'   step_meanimpute(all_predictors()) %>%
-#'   step_adasyn(Class) %>%
+#' orig <- count(hpc_data0, class, name = "orig")
+#' orig
+#'
+#' up_rec <- recipe(class ~ ., data = hpc_data0) %>%
+#'   # Bring the minority levels up to about 1000 each
+#'   # 1000/2211 is approx 0.4523
+#'   step_adasyn(class, over_ratio = 0.4523) %>%
 #'   prep()
 #'
-#' sort(table(bake(ds_rec, new_data = NULL)$Class, useNA = "always"))
+#' training <- up_rec %>%
+#'   bake(new_data = NULL) %>%
+#'   count(class, name = "training")
+#' training
 #'
-#' # since `skip` defaults to TRUE, baking the step has no effect
-#' baked_okc <- bake(ds_rec, new_data = okc)
-#' table(baked_okc$Class, useNA = "always")
+#' # Since `skip` defaults to TRUE, baking the step has no effect
+#' baked <- up_rec %>%
+#'   bake(new_data = hpc_data0) %>%
+#'   count(class, name = "baked")
+#' baked
+#'
+#' # Note that if the original data contained more rows than the
+#' # target n (= ratio * majority_n), the data are left alone:
+#' orig %>%
+#'   left_join(training, by = "class") %>%
+#'   left_join(baked, by = "class")
 #'
 #' library(ggplot2)
 #'
@@ -66,7 +87,7 @@
 #'   geom_point() +
 #'   labs(title = "Without ADASYN")
 #'
-#' recipe(class ~ ., data = circle_example) %>%
+#' recipe(class ~ x + y, data = circle_example) %>%
 #'   step_adasyn(class) %>%
 #'   prep() %>%
 #'   bake(new_data = NULL) %>%
@@ -80,7 +101,7 @@ step_adasyn <-
     add_step(
       recipe,
       step_adasyn_new(
-        terms = ellipse_check(...),
+        terms = enquos(...),
         role = role,
         trained = trained,
         column = column,
@@ -115,21 +136,18 @@ step_adasyn_new <-
 
 #' @export
 prep.step_adasyn <- function(x, training, info = NULL, ...) {
-  col_name <- terms_select(x$terms, info = info)
-  if (length(col_name) != 1) {
-    rlang::abort("Please select a single factor variable.")
+  col_name <- recipes_eval_select(x$terms, training, info)
+  if (length(col_name) > 1) {
+    rlang::abort("The selector should select at most a single variable")
   }
-  if (!is.factor(training[[col_name]])) {
-    rlang::abort(paste0(col_name, " should be a factor variable."))
+
+  if (length(col_name) == 1) {
+    check_column_factor(training, col_name)
   }
 
   predictors <- setdiff(info$variable[info$role == "predictor"], col_name)
-
   check_type(training[, predictors], TRUE)
-
-  if (any(map_lgl(training, ~ any(is.na(.x))))) {
-    rlang::abort("`NA` values are not allowed when using `step_adasyn`")
-  }
+  check_na(select(training, all_of(c(col_name, predictors))), "step_adasyn")
 
   step_adasyn_new(
     terms = x$terms,
@@ -147,6 +165,11 @@ prep.step_adasyn <- function(x, training, info = NULL, ...) {
 
 #' @export
 bake.step_adasyn <- function(object, new_data, ...) {
+  if (length(object$column) == 0L) {
+    # Empty selection
+    return(new_data)
+  }
+
   new_data <- as.data.frame(new_data)
 
   predictor_data <- new_data[, unique(c(object$predictors, object$column))]
@@ -171,19 +194,18 @@ bake.step_adasyn <- function(object, new_data, ...) {
 #' @export
 print.step_adasyn <-
   function(x, width = max(20, options()$width - 26), ...) {
-    cat("adasyn based on ", sep = "")
-    printer(x$column, x$terms, x$trained, width = width)
+    title <- "adasyn based on "
+    print_step(x$column, x$terms, x$trained, title, width)
     invisible(x)
   }
 
-#' @rdname step_adasyn
+#' @rdname tidy.recipe
 #' @param x A `step_adasyn` object.
 #' @export
 tidy.step_adasyn <- function(x, ...) {
   if (is_trained(x)) {
-    res <- tibble(terms = x$column)
-  }
-  else {
+    res <- tibble(terms = unname(x$column))
+  } else {
     term_names <- sel2char(x$terms)
     res <- tibble(terms = unname(term_names))
   }

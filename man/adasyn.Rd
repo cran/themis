@@ -2,7 +2,7 @@
 % Please edit documentation in R/adasyn_impl.R
 \name{adasyn}
 \alias{adasyn}
-\title{Adaptive Synthetic Sampling Approach algorithm}
+\title{Adaptive Synthetic Algorithm}
 \usage{
 adasyn(df, var, k = 5, over_ratio = 1)
 }
@@ -32,14 +32,26 @@ Generates synthetic positive instances using ADASYN algorithm.
 All columns used in this function must be numeric with no missing data.
 }
 \examples{
-adasyn(circle_example, var = "class")
+circle_numeric <- circle_example[, c("x", "y", "class")]
 
-adasyn(circle_example, var = "class", k = 10)
+res <- adasyn(circle_numeric, var = "class")
 
-adasyn(circle_example, var = "class", over_ratio = 0.8)
+res <- adasyn(circle_numeric, var = "class", k = 10)
+
+res <- adasyn(circle_numeric, var = "class", over_ratio = 0.8)
 }
 \references{
 Chawla, N. V., Bowyer, K. W., Hall, L. O., and Kegelmeyer,
 W. P. (2002). Smote: Synthetic minority over-sampling technique.
 Journal of Artificial Intelligence Research, 16:321-357.
 }
+\seealso{
+\code{\link[=step_adasyn]{step_adasyn()}} for step function of this method
+
+Other Direct Implementations: 
+\code{\link{bsmote}()},
+\code{\link{nearmiss}()},
+\code{\link{smotenc}()},
+\code{\link{smote}()}
+}
+\concept{Direct Implementations}

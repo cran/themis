@@ -30,10 +30,7 @@
 #'  the variable used to sample.
 #' @details
 #' Down-sampling is intended to be performed on the _training_ set
-#'  alone. For this reason, the default is `skip = TRUE`. It is
-#'  advisable to use `prep(recipe, retain = TRUE)` when preparing
-#'  the recipe; in this way [juice()] can be used to obtain the
-#'  down-sampled version of the data.
+#'  alone. For this reason, the default is `skip = TRUE`.
 #'
 #' If there are missing values in the factor variable that is used
 #'  to define the sampling, missing data are selected at random in
@@ -52,46 +49,78 @@
 #'  it is not clear whether those operations should be conducted
 #'  _before_ or _after_ rows are removed.
 #'
-#' @keywords datagen
-#' @concept preprocessing
-#' @concept subsampling
+#' # Tidying
+#'
+#' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
+#' (the selectors or variables selected) will be returned.
+#'
+#' @family Steps for under-sampling
+#'
 #' @export
 #' @examples
 #' library(recipes)
 #' library(modeldata)
-#' data(okc)
+#' data(hpc_data)
 #'
-#' sort(table(okc$diet, useNA = "always"))
+#' hpc_data0 <- hpc_data %>%
+#'   select(-protocol, -day)
 #'
-#' ds_rec <- recipe(~., data = okc) %>%
-#'   step_downsample(diet) %>%
-#'   prep(training = okc, retain = TRUE)
+#' orig <- count(hpc_data0, class, name = "orig")
+#' orig
 #'
-#' sort(table(bake(ds_rec, new_data = NULL)$diet, useNA = "always"))
+#' up_rec <- recipe(class ~ ., data = hpc_data0) %>%
+#'   # Bring the majority levels down to about 1000 each
+#'   # 1000/259 is approx 3.862
+#'   step_downsample(class, under_ratio = 3.862) %>%
+#'   prep()
 #'
-#' # since `skip` defaults to TRUE, baking the step has no effect
-#' baked_okc <- bake(ds_rec, new_data = okc)
-#' table(baked_okc$diet, useNA = "always")
+#' training <- up_rec %>%
+#'   bake(new_data = NULL) %>%
+#'   count(class, name = "training")
+#' training
+#'
+#' # Since `skip` defaults to TRUE, baking the step has no effect
+#' baked <- up_rec %>%
+#'   bake(new_data = hpc_data0) %>%
+#'   count(class, name = "baked")
+#' baked
+#'
+#' # Note that if the original data contained more rows than the
+#' # target n (= ratio * majority_n), the data are left alone:
+#' orig %>%
+#'   left_join(training, by = "class") %>%
+#'   left_join(baked, by = "class")
+#'
+#' library(ggplot2)
+#'
+#' ggplot(circle_example, aes(x, y, color = class)) +
+#'   geom_point() +
+#'   labs(title = "Without downsample")
+#'
+#' recipe(class ~ x + y, data = circle_example) %>%
+#'   step_downsample(class) %>%
+#'   prep() %>%
+#'   bake(new_data = NULL) %>%
+#'   ggplot(aes(x, y, color = class)) +
+#'   geom_point() +
+#'   labs(title = "With downsample")
 step_downsample <-
-  function(recipe, ..., under_ratio = 1, ratio = NA, role = NA,
+  function(recipe, ..., under_ratio = 1, ratio = deprecated(), role = NA,
            trained = FALSE, column = NULL, target = NA, skip = TRUE,
            seed = sample.int(10^5, 1), id = rand_id("downsample")) {
-    if (!is.na(ratio) & all(under_ratio != ratio)) {
-      message(
-        paste(
-          "The `ratio` argument is now deprecated in favor of `under_ratio`.",
-          "`ratio` will be removed in a subsequent version."
-        )
+
+    if (lifecycle::is_present(ratio)) {
+      lifecycle::deprecate_stop(
+        "0.2.0",
+        "step_downsample(ratio = )",
+        "step_downsample(under_ratio = )"
       )
-      if (!is.na(ratio)) {
-        under_ratio <- ratio
-      }
     }
 
     add_step(
       recipe,
       step_downsample_new(
-        terms = ellipse_check(...),
+        terms = enquos(...),
         under_ratio = under_ratio,
         ratio = ratio,
         role = role,
@@ -126,16 +155,20 @@ step_downsample_new <-
 
 #' @export
 prep.step_downsample <- function(x, training, info = NULL, ...) {
-  col_name <- terms_select(x$terms, info = info)
-  if (length(col_name) != 1) {
-    rlang::abort("Please select a single factor variable.")
-  }
-  if (!is.factor(training[[col_name]])) {
-    rlang::abort(paste0(col_name, " should be a factor variable."))
+  col_name <- recipes_eval_select(x$terms, training, info)
+  if (length(col_name) > 1) {
+    rlang::abort("The selector should select at most a single variable")
   }
 
-  obs_freq <- table(training[[col_name]])
-  minority <- min(obs_freq)
+  if (length(col_name) == 0) {
+    minority <- 1
+  } else {
+    check_column_factor(training, col_name)
+    obs_freq <- table(training[[col_name]])
+    minority <- min(obs_freq)
+  }
+
+  check_na(select(training, all_of(col_name)), "step_downsample")
 
   step_downsample_new(
     terms = x$terms,
@@ -165,6 +198,11 @@ subsamp <- function(x, num) {
 
 #' @export
 bake.step_downsample <- function(object, new_data, ...) {
+  if (length(object$column) == 0L) {
+    # Empty selection
+    return(new_data)
+  }
+
   if (any(is.na(new_data[[object$column]]))) {
     missing <- new_data[is.na(new_data[[object$column]]), ]
   } else {
@@ -186,22 +224,21 @@ bake.step_downsample <- function(object, new_data, ...) {
   as_tibble(new_data)
 }
 
-
+#' @export
 print.step_downsample <-
   function(x, width = max(20, options()$width - 26), ...) {
-    cat("Down-sampling based on ", sep = "")
-    printer(x$column, x$terms, x$trained, width = width)
+    title <- "Down-sampling based on "
+    print_step(x$column, x$terms, x$trained, title, width)
     invisible(x)
   }
 
-#' @rdname step_downsample
+#' @rdname tidy.recipe
 #' @param x A `step_downsample` object.
 #' @export
 tidy.step_downsample <- function(x, ...) {
   if (is_trained(x)) {
-    res <- tibble(terms = x$column)
-  }
-  else {
+    res <- tibble(terms = unname(x$column))
+  } else {
     term_names <- sel2char(x$terms)
     res <- tibble(terms = unname(term_names))
   }

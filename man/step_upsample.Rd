@@ -2,14 +2,13 @@
 % Please edit documentation in R/step_upsample.R
 \name{step_upsample}
 \alias{step_upsample}
-\alias{tidy.step_upsample}
 \title{Up-Sample a Data Set Based on a Factor Variable}
 \usage{
 step_upsample(
   recipe,
   ...,
   over_ratio = 1,
-  ratio = NA,
+  ratio = deprecated(),
   role = NA,
   trained = FALSE,
   column = NULL,
@@ -18,8 +17,6 @@ step_upsample(
   seed = sample.int(10^5, 1),
   id = rand_id("upsample")
 )
-
-\method{tidy}{step_upsample}(x, ...)
 }
 \arguments{
 \item{recipe}{A recipe object. The step will be added to the
@@ -53,17 +50,15 @@ be populated (eventually) by the \code{...} selectors.}
 should not be set by the user and will be populated by \code{prep}.}
 
 \item{skip}{A logical. Should the step be skipped when the
-recipe is baked by \code{\link[recipes:bake]{bake.recipe()}}? While all operations are baked
-when \code{\link[recipes:prep]{prep.recipe()}} is run, some operations may not be able to be
+recipe is baked by \code{\link[recipes:bake]{bake()}}? While all operations are baked
+when \code{\link[recipes:prep]{prep()}} is run, some operations may not be able to be
 conducted on new data (e.g. processing the outcome variable(s)).
 Care should be taken when using \code{skip = TRUE} as it may affect
-the computations for subsequent operations}
+the computations for subsequent operations.}
 
 \item{seed}{An integer that will be used as the seed when upsampling.}
 
 \item{id}{A character string that is unique to this step to identify it.}
-
-\item{x}{A \code{step_upsample} object.}
 }
 \value{
 An updated version of \code{recipe} with the new step
@@ -78,10 +73,7 @@ levels in a specific factor level equal.
 }
 \details{
 Up-sampling is intended to be performed on the \emph{training} set
-alone. For this reason, the default is \code{skip = TRUE}. It is
-advisable to use \code{prep(recipe, retain = TRUE)} when preparing
-the recipe; in this way \code{\link[=juice]{juice()}} can be used to obtain the
-up-sampled version of the data.
+alone. For this reason, the default is \code{skip = TRUE}.
 
 If there are missing values in the factor variable that is used
 to define the sampling, missing data are selected at random in
@@ -95,35 +87,44 @@ frequency as the majority level, all data will be retained.
 All columns in the data are sampled and returned by \code{\link[=juice]{juice()}}
 and \code{\link[=bake]{bake()}}.
 }
+\section{Tidying}{
+When you \code{\link[=tidy.recipe]{tidy()}} this step, a tibble with columns \code{terms}
+(the selectors or variables selected) will be returned.
+}
+
 \examples{
 library(recipes)
 library(modeldata)
-data(okc)
+data(hpc_data)
 
-orig <- table(okc$diet, useNA = "always")
+hpc_data0 <- hpc_data \%>\%
+  select(-protocol, -day)
 
-sort(orig, decreasing = TRUE)
+orig <- count(hpc_data0, class, name = "orig")
+orig
 
-up_rec <- recipe(~., data = okc) \%>\%
-  # Bring the minority levels up to about 200 each
-  # 200/16562 is approx 0.0121
-  step_upsample(diet, over_ratio = 0.0121) \%>\%
-  prep(training = okc, retain = TRUE)
+up_rec <- recipe(class ~ ., data = hpc_data0) \%>\%
+  # Bring the minority levels up to about 1000 each
+  # 1000/2211 is approx 0.4523
+  step_upsample(class, over_ratio = 0.4523) \%>\%
+  prep()
 
-training <- table(bake(up_rec, new_data = NULL)$diet, useNA = "always")
+training <- up_rec \%>\%
+  bake(new_data = NULL) \%>\%
+  count(class, name = "training")
+training
 
 # Since `skip` defaults to TRUE, baking the step has no effect
-baked_okc <- bake(up_rec, new_data = okc)
-baked <- table(baked_okc$diet, useNA = "always")
+baked <- up_rec \%>\%
+  bake(new_data = hpc_data0) \%>\%
+  count(class, name = "baked")
+baked
 
 # Note that if the original data contained more rows than the
 # target n (= ratio * majority_n), the data are left alone:
-data.frame(
-  level = names(orig),
-  orig_freq = as.vector(orig),
-  train_freq = as.vector(training),
-  baked_freq = as.vector(baked)
-)
+orig \%>\%
+  left_join(training, by = "class") \%>\%
+  left_join(baked, by = "class")
 
 library(ggplot2)
 
@@ -131,7 +132,7 @@ ggplot(circle_example, aes(x, y, color = class)) +
   geom_point() +
   labs(title = "Without upsample")
 
-recipe(class ~ ., data = circle_example) \%>\%
+recipe(class ~ x + y, data = circle_example) \%>\%
   step_upsample(class) \%>\%
   prep() \%>\%
   bake(new_data = NULL) \%>\%
@@ -139,6 +140,12 @@ recipe(class ~ ., data = circle_example) \%>\%
   geom_jitter(width = 0.1, height = 0.1) +
   labs(title = "With upsample (with jittering)")
 }
-\concept{preprocessing}
-\concept{subsampling}
-\keyword{datagen}
+\seealso{
+Other Steps for over-sampling: 
+\code{\link{step_adasyn}()},
+\code{\link{step_bsmote}()},
+\code{\link{step_rose}()},
+\code{\link{step_smotenc}()},
+\code{\link{step_smote}()}
+}
+\concept{Steps for over-sampling}

@@ -1,4 +1,4 @@
-#' Apply borderline-SMOTE algorithm
+#' Apply borderline-SMOTE Algorithm
 #'
 #' `step_bsmote` creates a *specification* of a recipe
 #'  step that generate new examples of the minority class using nearest
@@ -55,39 +55,53 @@
 #'  option `skip = TRUE` so that the extra sampling is _not_
 #'  conducted outside of the training set.
 #'
+#' # Tidying
+#'
+#' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
+#' (the selectors or variables selected) will be returned.
+#'
 #' @references Hui Han, Wen-Yuan Wang, and Bing-Huan Mao. Borderline-smote:
 #' a new over-sampling method in imbalanced data sets learning. In
 #' International Conference on Intelligent Computing, pages 878–887. Springer,
 #' 2005.
 #'
-#' @keywords datagen
-#' @concept preprocessing
-#' @concept subsampling
+#' @seealso [bsmote()] for direct implementation
+#' @family Steps for over-sampling
+#'
 #' @export
 #' @examples
 #' library(recipes)
 #' library(modeldata)
-#' data(credit_data)
+#' data(hpc_data)
 #'
-#' sort(table(credit_data$Status, useNA = "always"))
+#' hpc_data0 <- hpc_data %>%
+#'   select(-protocol, -day)
 #'
-#' ds_rec <- recipe(Status ~ Age + Income + Assets, data = credit_data) %>%
-#'   step_meanimpute(all_predictors()) %>%
-#'   step_bsmote(Status) %>%
+#' orig <- count(hpc_data0, class, name = "orig")
+#' orig
+#'
+#' up_rec <- recipe(class ~ ., data = hpc_data0) %>%
+#'   # Bring the minority levels up to about 1000 each
+#'   # 1000/2211 is approx 0.4523
+#'   step_bsmote(class, over_ratio = 0.4523) %>%
 #'   prep()
 #'
-#' sort(table(bake(ds_rec, new_data = NULL)$Status, useNA = "always"))
+#' training <- up_rec %>%
+#'   bake(new_data = NULL) %>%
+#'   count(class, name = "training")
+#' training
 #'
-#' # since `skip` defaults to TRUE, baking the step has no effect
-#' baked_okc <- bake(ds_rec, new_data = credit_data)
-#' table(baked_okc$Status, useNA = "always")
+#' # Since `skip` defaults to TRUE, baking the step has no effect
+#' baked <- up_rec %>%
+#'   bake(new_data = hpc_data0) %>%
+#'   count(class, name = "baked")
+#' baked
 #'
-#' ds_rec2 <- recipe(Status ~ Age + Income + Assets, data = credit_data) %>%
-#'   step_meanimpute(all_predictors()) %>%
-#'   step_bsmote(Status, over_ratio = 0.2) %>%
-#'   prep()
-#'
-#' table(bake(ds_rec2, new_data = NULL)$Status, useNA = "always")
+#' # Note that if the original data contained more rows than the
+#' # target n (= ratio * majority_n), the data are left alone:
+#' orig %>%
+#'   left_join(training, by = "class") %>%
+#'   left_join(baked, by = "class")
 #'
 #' library(ggplot2)
 #'
@@ -95,7 +109,7 @@
 #'   geom_point() +
 #'   labs(title = "Without SMOTE")
 #'
-#' recipe(class ~ ., data = circle_example) %>%
+#' recipe(class ~ x + y, data = circle_example) %>%
 #'   step_bsmote(class, all_neighbors = FALSE) %>%
 #'   prep() %>%
 #'   bake(new_data = NULL) %>%
@@ -103,7 +117,7 @@
 #'   geom_point() +
 #'   labs(title = "With borderline-SMOTE, all_neighbors = FALSE")
 #'
-#' recipe(class ~ ., data = circle_example) %>%
+#' recipe(class ~ x + y, data = circle_example) %>%
 #'   step_bsmote(class, all_neighbors = TRUE) %>%
 #'   prep() %>%
 #'   bake(new_data = NULL) %>%
@@ -117,7 +131,7 @@ step_bsmote <-
     add_step(
       recipe,
       step_bsmote_new(
-        terms = ellipse_check(...),
+        terms = enquos(...),
         role = role,
         trained = trained,
         column = column,
@@ -154,18 +168,19 @@ step_bsmote_new <-
 
 #' @export
 prep.step_bsmote <- function(x, training, info = NULL, ...) {
-  col_name <- terms_select(x$terms, info = info)
-  if (length(col_name) != 1) {
-    rlang::abort("Please select a single factor variable.")
+  col_name <- recipes_eval_select(x$terms, training, info)
+  if (length(col_name) > 1) {
+    rlang::abort("The selector should select at most a single variable")
   }
-  if (!is.factor(training[[col_name]])) {
-    rlang::abort(paste0(col_name, " should be a factor variable."))
+
+  if (length(col_name) == 1) {
+    check_column_factor(training, col_name)
   }
 
   predictors <- setdiff(info$variable[info$role == "predictor"], col_name)
 
   check_type(training[, predictors], TRUE)
-  check_na(select(training, -col_name), "step_bsmote")
+  check_na(select(training, all_of(c(col_name, predictors))), "step_bsmote")
 
   step_bsmote_new(
     terms = x$terms,
@@ -184,6 +199,11 @@ prep.step_bsmote <- function(x, training, info = NULL, ...) {
 
 #' @export
 bake.step_bsmote <- function(object, new_data, ...) {
+  if (length(object$column) == 0L) {
+    # Empty selection
+    return(new_data)
+  }
+
   new_data <- as.data.frame(new_data)
 
   predictor_data <- new_data[, unique(c(object$predictors, object$column))]
@@ -208,19 +228,18 @@ bake.step_bsmote <- function(object, new_data, ...) {
 #' @export
 print.step_bsmote <-
   function(x, width = max(20, options()$width - 26), ...) {
-    cat("BorderlineSMOTE based on ", sep = "")
-    printer(x$column, x$terms, x$trained, width = width)
+    title <- "BorderlineSMOTE based on "
+    print_step(x$column, x$terms, x$trained, title, width)
     invisible(x)
   }
 
-#' @rdname step_bsmote
+#' @rdname tidy.recipe
 #' @param x A `step_bsmote` object.
 #' @export
 tidy.step_bsmote <- function(x, ...) {
   if (is_trained(x)) {
-    res <- tibble(terms = x$column)
-  }
-  else {
+    res <- tibble(terms = unname(x$column))
+  } else {
     term_names <- sel2char(x$terms)
     res <- tibble(terms = unname(term_names))
   }

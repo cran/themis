@@ -1,4 +1,4 @@
-#' Under-sampling by removing points near other classes.
+#' Remove Points Near Other Classes
 #'
 #' `step_nearmiss` creates a *specification* of a recipe
 #'  step that removes majority class instances by undersampling points
@@ -37,31 +37,52 @@
 #'  option `skip = TRUE` so that the extra sampling is _not_
 #'  conducted outside of the training set.
 #'
+#' # Tidying
+#'
+#' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
+#' (the selectors or variables selected) will be returned.
+#'
 #' @references Inderjeet Mani and I Zhang. knn approach to unbalanced data
 #' distributions: a case study involving information extraction. In Proceedings
 #' of workshop on learning from imbalanced datasets, 2003.
 #'
-#' @keywords datagen
-#' @concept preprocessing
-#' @concept subsampling
+#' @seealso [nearmiss()] for direct implementation
+#' @family Steps for under-sampling
+#'
 #' @export
 #' @examples
 #' library(recipes)
 #' library(modeldata)
-#' data(okc)
+#' data(hpc_data)
 #'
-#' sort(table(okc$Class, useNA = "always"))
+#' hpc_data0 <- hpc_data %>%
+#'   select(-protocol, -day)
 #'
-#' ds_rec <- recipe(Class ~ age + height, data = okc) %>%
-#'   step_meanimpute(all_predictors()) %>%
-#'   step_nearmiss(Class) %>%
+#' orig <- count(hpc_data0, class, name = "orig")
+#' orig
+#'
+#' up_rec <- recipe(class ~ ., data = hpc_data0) %>%
+#'   # Bring the majority levels down to about 1000 each
+#'   # 1000/259 is approx 3.862
+#'   step_nearmiss(class, under_ratio = 3.862) %>%
 #'   prep()
 #'
-#' sort(table(bake(ds_rec, new_data = NULL)$Class, useNA = "always"))
+#' training <- up_rec %>%
+#'   bake(new_data = NULL) %>%
+#'   count(class, name = "training")
+#' training
 #'
-#' # since `skip` defaults to TRUE, baking the step has no effect
-#' baked_okc <- bake(ds_rec, new_data = okc)
-#' table(baked_okc$Class, useNA = "always")
+#' # Since `skip` defaults to TRUE, baking the step has no effect
+#' baked <- up_rec %>%
+#'   bake(new_data = hpc_data0) %>%
+#'   count(class, name = "baked")
+#' baked
+#'
+#' # Note that if the original data contained more rows than the
+#' # target n (= ratio * majority_n), the data are left alone:
+#' orig %>%
+#'   left_join(training, by = "class") %>%
+#'   left_join(baked, by = "class")
 #'
 #' library(ggplot2)
 #'
@@ -71,7 +92,7 @@
 #'   xlim(c(1, 15)) +
 #'   ylim(c(1, 15))
 #'
-#' recipe(class ~ ., data = circle_example) %>%
+#' recipe(class ~ x + y, data = circle_example) %>%
 #'   step_nearmiss(class) %>%
 #'   prep() %>%
 #'   bake(new_data = NULL) %>%
@@ -88,7 +109,7 @@ step_nearmiss <-
     add_step(
       recipe,
       step_nearmiss_new(
-        terms = ellipse_check(...),
+        terms = enquos(...),
         role = role,
         trained = trained,
         column = column,
@@ -123,21 +144,20 @@ step_nearmiss_new <-
 
 #' @export
 prep.step_nearmiss <- function(x, training, info = NULL, ...) {
-  col_name <- terms_select(x$terms, info = info)
-  if (length(col_name) != 1) {
-    rlang::abort("Please select a single factor variable.")
+  col_name <- recipes_eval_select(x$terms, training, info)
+
+  if (length(col_name) > 1) {
+    rlang::abort("The selector should select at most a single variable")
   }
-  if (!is.factor(training[[col_name]])) {
-    rlang::abort(paste0(col_name, " should be a factor variable."))
+
+  if (length(col_name) == 1) {
+    check_column_factor(training, col_name)
   }
 
   predictors <- setdiff(info$variable[info$role == "predictor"], col_name)
 
   check_type(training[, predictors], TRUE)
-
-  if (any(map_lgl(training, ~ any(is.na(.x))))) {
-    rlang::abort("`NA` values are not allowed when using `step_nearmiss`")
-  }
+  check_na(select(training, all_of(c(col_name, predictors))), "step_nearmiss")
 
   step_nearmiss_new(
     terms = x$terms,
@@ -155,6 +175,10 @@ prep.step_nearmiss <- function(x, training, info = NULL, ...) {
 
 #' @export
 bake.step_nearmiss <- function(object, new_data, ...) {
+  if (length(object$column) == 0L) {
+    # Empty selection
+    return(new_data)
+  }
 
   ignore_vars <- setdiff(names(new_data), c(object$predictors, object$column))
 
@@ -170,8 +194,10 @@ bake.step_nearmiss <- function(object, new_data, ...) {
         k = object$neighbors,
         under_ratio = object$under_ratio
       )
-      new_data[[object$column]] <- factor(new_data[[object$column]],
-                                          levels = original_levels)
+      new_data[[object$column]] <- factor(
+        new_data[[object$column]],
+        levels = original_levels
+      )
     }
   )
 
@@ -181,19 +207,18 @@ bake.step_nearmiss <- function(object, new_data, ...) {
 #' @export
 print.step_nearmiss <-
   function(x, width = max(20, options()$width - 26), ...) {
-    cat("NEARMISS-1 based on ", sep = "")
-    printer(x$column, x$terms, x$trained, width = width)
+    title <- "NEARMISS-1 based on "
+    print_step(x$column, x$terms, x$trained, title, width)
     invisible(x)
   }
 
-#' @rdname step_nearmiss
+#' @rdname tidy.recipe
 #' @param x A `step_nearmiss` object.
 #' @export
 tidy.step_nearmiss <- function(x, ...) {
   if (is_trained(x)) {
-    res <- tibble(terms = x$column)
-  }
-  else {
+    res <- tibble(terms = unname(x$column))
+  } else {
     term_names <- sel2char(x$terms)
     res <- tibble(terms = unname(term_names))
   }

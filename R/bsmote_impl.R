@@ -1,4 +1,4 @@
-#' borderline-SMOTE algorithm
+#' borderline-SMOTE Algorithm
 #'
 #' BSMOTE generates generate new examples of the minority class using nearest
 #'  neighbors of these cases in the border region between classes.
@@ -42,16 +42,20 @@
 #' International Conference on Intelligent Computing, pages 878–887. Springer,
 #' 2005.
 #'
+#' @seealso [step_bsmote()] for step function of this method
+#' @family Direct Implementations
+#'
 #' @examples
-#' bsmote(circle_example, var = "class")
+#' circle_numeric <- circle_example[, c("x", "y", "class")]
 #'
-#' bsmote(circle_example, var = "class", k = 10)
+#' res <- bsmote(circle_numeric, var = "class")
 #'
-#' bsmote(circle_example, var = "class", over_ratio = 0.8)
+#' res <- bsmote(circle_numeric, var = "class", k = 10)
 #'
-#' bsmote(circle_example, var = "class", all_neighbors = TRUE)
+#' res <- bsmote(circle_numeric, var = "class", over_ratio = 0.8)
+#'
+#' res <- bsmote(circle_numeric, var = "class", all_neighbors = TRUE)
 bsmote <- function(df, var, k = 5, over_ratio = 1, all_neighbors = FALSE) {
-
   if (length(var) != 1) {
     rlang::abort("Please select a single factor variable for `var`.")
   }
@@ -59,7 +63,7 @@ bsmote <- function(df, var, k = 5, over_ratio = 1, all_neighbors = FALSE) {
   var <- rlang::arg_match(var, colnames(df))
 
   if (!(is.factor(df[[var]]) | is.character(df[[var]]))) {
-    rlang::abort(paste0(var, " should be a factor or character variable."))
+    rlang::abort(glue("{var} should be a factor or character variable."))
   }
 
   if (length(k) != 1) {
@@ -73,7 +77,7 @@ bsmote <- function(df, var, k = 5, over_ratio = 1, all_neighbors = FALSE) {
   predictors <- setdiff(colnames(df), var)
 
   check_numeric(df[, predictors])
-  check_na(select(df, -var), "smote")
+  check_na(select(df, -all_of(var)), "bsmote")
 
   bsmote_impl(df, var, k, over_ratio)
 }
@@ -96,9 +100,8 @@ bsmote_impl <- function(df, var, k = 5, over_ratio = 1, all_neighbors = FALSE) {
     )
 
     if (sum(danger_ids) <= k) {
-      rlang::abort(paste0(
-        "Not enough danger observations of '", min_names[i],
-        "' to perform BSMOTE."
+      rlang::abort(glue(
+        "Not enough danger observations of '{min_names[i]}' to perform BSMOTE."
       ))
     }
 

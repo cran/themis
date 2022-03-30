@@ -2,8 +2,7 @@
 % Please edit documentation in R/step_smote.R
 \name{step_smote}
 \alias{step_smote}
-\alias{tidy.step_smote}
-\title{Apply SMOTE algorithm}
+\title{Apply SMOTE Algorithm}
 \usage{
 step_smote(
   recipe,
@@ -17,8 +16,6 @@ step_smote(
   seed = sample.int(10^5, 1),
   id = rand_id("smote")
 )
-
-\method{tidy}{step_smote}(x, ...)
 }
 \arguments{
 \item{recipe}{A recipe object. The step will be added to the
@@ -50,18 +47,16 @@ half as many rows than the majority level.}
 to generate the new examples of the minority class.}
 
 \item{skip}{A logical. Should the step be skipped when the
-recipe is baked by \code{\link[recipes:bake]{bake.recipe()}}? While all operations are baked
-when \code{\link[recipes:prep]{prep.recipe()}} is run, some operations may not be able to be
+recipe is baked by \code{\link[recipes:bake]{bake()}}? While all operations are baked
+when \code{\link[recipes:prep]{prep()}} is run, some operations may not be able to be
 conducted on new data (e.g. processing the outcome variable(s)).
 Care should be taken when using \code{skip = TRUE} as it may affect
-the computations for subsequent operations}
+the computations for subsequent operations.}
 
 \item{seed}{An integer that will be used as the seed when
 smote-ing.}
 
 \item{id}{A character string that is unique to this step to identify it.}
-
-\item{x}{A \code{step_smote} object.}
 }
 \value{
 An updated version of \code{recipe} with the new step
@@ -91,30 +86,44 @@ When used in modeling, users should strongly consider using the
 option \code{skip = TRUE} so that the extra sampling is \emph{not}
 conducted outside of the training set.
 }
+\section{Tidying}{
+When you \code{\link[=tidy.recipe]{tidy()}} this step, a tibble with columns \code{terms}
+(the selectors or variables selected) will be returned.
+}
+
 \examples{
 library(recipes)
 library(modeldata)
-data(credit_data)
+data(hpc_data)
 
-sort(table(credit_data$Status, useNA = "always"))
+hpc_data0 <- hpc_data \%>\%
+  select(-protocol, -day)
 
-ds_rec <- recipe(Status ~ Age + Income + Assets, data = credit_data) \%>\%
-  step_meanimpute(all_predictors()) \%>\%
-  step_smote(Status) \%>\%
+orig <- count(hpc_data0, class, name = "orig")
+orig
+
+up_rec <- recipe(class ~ ., data = hpc_data0) \%>\%
+  # Bring the minority levels up to about 1000 each
+  # 1000/2211 is approx 0.4523
+  step_smote(class, over_ratio = 0.4523) \%>\%
   prep()
 
-sort(table(bake(ds_rec, new_data = NULL)$Status, useNA = "always"))
+training <- up_rec \%>\%
+  bake(new_data = NULL) \%>\%
+  count(class, name = "training")
+training
 
-# since `skip` defaults to TRUE, baking the step has no effect
-baked_okc <- bake(ds_rec, new_data = credit_data)
-table(baked_okc$Status, useNA = "always")
+# Since `skip` defaults to TRUE, baking the step has no effect
+baked <- up_rec \%>\%
+  bake(new_data = hpc_data0) \%>\%
+  count(class, name = "baked")
+baked
 
-ds_rec2 <- recipe(Status ~ Age + Income + Assets, data = credit_data) \%>\%
-  step_meanimpute(all_predictors()) \%>\%
-  step_smote(Status, over_ratio = 0.2) \%>\%
-  prep()
-
-table(bake(ds_rec2, new_data = NULL)$Status, useNA = "always")
+# Note that if the original data contained more rows than the
+# target n (= ratio * majority_n), the data are left alone:
+orig \%>\%
+  left_join(training, by = "class") \%>\%
+  left_join(baked, by = "class")
 
 library(ggplot2)
 
@@ -122,7 +131,7 @@ ggplot(circle_example, aes(x, y, color = class)) +
   geom_point() +
   labs(title = "Without SMOTE")
 
-recipe(class ~ ., data = circle_example) \%>\%
+recipe(class ~ x + y, data = circle_example) \%>\%
   step_smote(class) \%>\%
   prep() \%>\%
   bake(new_data = NULL) \%>\%
@@ -135,6 +144,14 @@ Chawla, N. V., Bowyer, K. W., Hall, L. O., and Kegelmeyer,
 W. P. (2002). Smote: Synthetic minority over-sampling technique.
 Journal of Artificial Intelligence Research, 16:321-357.
 }
-\concept{preprocessing}
-\concept{subsampling}
-\keyword{datagen}
+\seealso{
+\code{\link[=smote]{smote()}} for direct implementation
+
+Other Steps for over-sampling: 
+\code{\link{step_adasyn}()},
+\code{\link{step_bsmote}()},
+\code{\link{step_rose}()},
+\code{\link{step_smotenc}()},
+\code{\link{step_upsample}()}
+}
+\concept{Steps for over-sampling}

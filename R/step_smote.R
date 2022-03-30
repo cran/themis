@@ -1,4 +1,4 @@
-#' Apply SMOTE algorithm
+#' Apply SMOTE Algorithm
 #'
 #' `step_smote` creates a *specification* of a recipe
 #'  step that generate new examples of the  minority class using nearest
@@ -41,38 +41,52 @@
 #'  option `skip = TRUE` so that the extra sampling is _not_
 #'  conducted outside of the training set.
 #'
+#' # Tidying
+#'
+#' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
+#' (the selectors or variables selected) will be returned.
+#'
 #' @references Chawla, N. V., Bowyer, K. W., Hall, L. O., and Kegelmeyer,
 #'  W. P. (2002). Smote: Synthetic minority over-sampling technique.
 #'  Journal of Artificial Intelligence Research, 16:321-357.
 #'
-#' @keywords datagen
-#' @concept preprocessing
-#' @concept subsampling
+#' @seealso [smote()] for direct implementation
+#' @family Steps for over-sampling
+#'
 #' @export
 #' @examples
 #' library(recipes)
 #' library(modeldata)
-#' data(credit_data)
+#' data(hpc_data)
 #'
-#' sort(table(credit_data$Status, useNA = "always"))
+#' hpc_data0 <- hpc_data %>%
+#'   select(-protocol, -day)
 #'
-#' ds_rec <- recipe(Status ~ Age + Income + Assets, data = credit_data) %>%
-#'   step_meanimpute(all_predictors()) %>%
-#'   step_smote(Status) %>%
+#' orig <- count(hpc_data0, class, name = "orig")
+#' orig
+#'
+#' up_rec <- recipe(class ~ ., data = hpc_data0) %>%
+#'   # Bring the minority levels up to about 1000 each
+#'   # 1000/2211 is approx 0.4523
+#'   step_smote(class, over_ratio = 0.4523) %>%
 #'   prep()
 #'
-#' sort(table(bake(ds_rec, new_data = NULL)$Status, useNA = "always"))
+#' training <- up_rec %>%
+#'   bake(new_data = NULL) %>%
+#'   count(class, name = "training")
+#' training
 #'
-#' # since `skip` defaults to TRUE, baking the step has no effect
-#' baked_okc <- bake(ds_rec, new_data = credit_data)
-#' table(baked_okc$Status, useNA = "always")
+#' # Since `skip` defaults to TRUE, baking the step has no effect
+#' baked <- up_rec %>%
+#'   bake(new_data = hpc_data0) %>%
+#'   count(class, name = "baked")
+#' baked
 #'
-#' ds_rec2 <- recipe(Status ~ Age + Income + Assets, data = credit_data) %>%
-#'   step_meanimpute(all_predictors()) %>%
-#'   step_smote(Status, over_ratio = 0.2) %>%
-#'   prep()
-#'
-#' table(bake(ds_rec2, new_data = NULL)$Status, useNA = "always")
+#' # Note that if the original data contained more rows than the
+#' # target n (= ratio * majority_n), the data are left alone:
+#' orig %>%
+#'   left_join(training, by = "class") %>%
+#'   left_join(baked, by = "class")
 #'
 #' library(ggplot2)
 #'
@@ -80,7 +94,7 @@
 #'   geom_point() +
 #'   labs(title = "Without SMOTE")
 #'
-#' recipe(class ~ ., data = circle_example) %>%
+#' recipe(class ~ x + y, data = circle_example) %>%
 #'   step_smote(class) %>%
 #'   prep() %>%
 #'   bake(new_data = NULL) %>%
@@ -94,7 +108,7 @@ step_smote <-
     add_step(
       recipe,
       step_smote_new(
-        terms = ellipse_check(...),
+        terms = enquos(...),
         role = role,
         trained = trained,
         column = column,
@@ -129,18 +143,18 @@ step_smote_new <-
 
 #' @export
 prep.step_smote <- function(x, training, info = NULL, ...) {
-  col_name <- terms_select(x$terms, info = info)
-  if (length(col_name) != 1) {
-    rlang::abort("Please select a single factor variable.")
+  col_name <- recipes_eval_select(x$terms, training, info)
+  if (length(col_name) > 1) {
+    rlang::abort("The selector should select at most a single variable")
   }
-  if (!is.factor(training[[col_name]])) {
-    rlang::abort(paste0(col_name, " should be a factor variable."))
+
+  if (length(col_name) == 1) {
+    check_column_factor(training, col_name)
   }
 
   predictors <- setdiff(info$variable[info$role == "predictor"], col_name)
-
   check_type(training[, predictors], TRUE)
-  check_na(select(training, -col_name), "step_smote")
+  check_na(select(training, all_of(c(col_name, predictors))), "step_smote")
 
   step_smote_new(
     terms = x$terms,
@@ -158,6 +172,11 @@ prep.step_smote <- function(x, training, info = NULL, ...) {
 
 #' @export
 bake.step_smote <- function(object, new_data, ...) {
+  if (length(object$column) == 0L) {
+    # Empty selection
+    return(new_data)
+  }
+
   new_data <- as.data.frame(new_data)
 
   predictor_data <- new_data[, unique(c(object$predictors, object$column))]
@@ -182,19 +201,18 @@ bake.step_smote <- function(object, new_data, ...) {
 #' @export
 print.step_smote <-
   function(x, width = max(20, options()$width - 26), ...) {
-    cat("SMOTE based on ", sep = "")
-    printer(x$column, x$terms, x$trained, width = width)
+    title <- "SMOTE based on "
+    print_step(x$column, x$terms, x$trained, title, width)
     invisible(x)
   }
 
-#' @rdname step_smote
+#' @rdname tidy.recipe
 #' @param x A `step_smote` object.
 #' @export
 tidy.step_smote <- function(x, ...) {
   if (is_trained(x)) {
-    res <- tibble(terms = x$column)
-  }
-  else {
+    res <- tibble(terms = unname(x$column))
+  } else {
     term_names <- sel2char(x$terms)
     res <- tibble(terms = unname(term_names))
   }

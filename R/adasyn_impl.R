@@ -1,4 +1,4 @@
-#' Adaptive Synthetic Sampling Approach algorithm
+#' Adaptive Synthetic Algorithm
 #'
 #' Generates synthetic positive instances using ADASYN algorithm.
 #'
@@ -19,14 +19,18 @@
 #'  W. P. (2002). Smote: Synthetic minority over-sampling technique.
 #'  Journal of Artificial Intelligence Research, 16:321-357.
 #'
+#' @seealso [step_adasyn()] for step function of this method
+#' @family Direct Implementations
+#'
 #' @examples
-#' adasyn(circle_example, var = "class")
+#' circle_numeric <- circle_example[, c("x", "y", "class")]
 #'
-#' adasyn(circle_example, var = "class", k = 10)
+#' res <- adasyn(circle_numeric, var = "class")
 #'
-#' adasyn(circle_example, var = "class", over_ratio = 0.8)
+#' res <- adasyn(circle_numeric, var = "class", k = 10)
+#'
+#' res <- adasyn(circle_numeric, var = "class", over_ratio = 0.8)
 adasyn <- function(df, var, k = 5, over_ratio = 1) {
-
   if (length(var) != 1) {
     rlang::abort("Please select a single factor variable for `var`.")
   }
@@ -34,7 +38,7 @@ adasyn <- function(df, var, k = 5, over_ratio = 1) {
   var <- rlang::arg_match(var, colnames(df))
 
   if (!(is.factor(df[[var]]) | is.character(df[[var]]))) {
-    rlang::abort(paste0(var, " should be a factor or character variable."))
+    rlang::abort(glue("`{var}` should be a factor or character variable."))
   }
 
   if (length(k) != 1) {
@@ -48,7 +52,7 @@ adasyn <- function(df, var, k = 5, over_ratio = 1) {
   predictors <- setdiff(colnames(df), var)
 
   check_numeric(df[, predictors])
-  check_na(select(df, -var), "smote")
+  check_na(select(df, -all_of(var)), "adasyn")
 
   adasyn_impl(df, var, k, over_ratio)
 }
@@ -79,10 +83,11 @@ adasyn_impl <- function(df, var, k = 5, over_ratio = 1) {
     minority <- data_mat[!min_class_in, , drop = FALSE]
 
     if (nrow(minority) <= k) {
-      rlang::abort(paste0(
-        "Not enough observations of '", min_names[i],
-        "' to perform ADASYN."
-      ))
+      rlang::abort(
+        glue(
+        "Not enough observations of '{min_names[i]}' to perform ADASYN."
+        )
+      )
     }
 
     tmp_df <- as.data.frame(

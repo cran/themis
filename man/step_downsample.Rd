@@ -2,14 +2,13 @@
 % Please edit documentation in R/step_downsample.R
 \name{step_downsample}
 \alias{step_downsample}
-\alias{tidy.step_downsample}
 \title{Down-Sample a Data Set Based on a Factor Variable}
 \usage{
 step_downsample(
   recipe,
   ...,
   under_ratio = 1,
-  ratio = NA,
+  ratio = deprecated(),
   role = NA,
   trained = FALSE,
   column = NULL,
@@ -18,8 +17,6 @@ step_downsample(
   seed = sample.int(10^5, 1),
   id = rand_id("downsample")
 )
-
-\method{tidy}{step_downsample}(x, ...)
 }
 \arguments{
 \item{recipe}{A recipe object. The step will be added to the
@@ -53,17 +50,15 @@ be populated (eventually) by the \code{...} selectors.}
 should not be set by the user and will be populated by \code{prep}.}
 
 \item{skip}{A logical. Should the step be skipped when the
-recipe is baked by \code{\link[recipes:bake]{bake.recipe()}}? While all operations are baked
-when \code{\link[recipes:prep]{prep.recipe()}} is run, some operations may not be able to be
+recipe is baked by \code{\link[recipes:bake]{bake()}}? While all operations are baked
+when \code{\link[recipes:prep]{prep()}} is run, some operations may not be able to be
 conducted on new data (e.g. processing the outcome variable(s)).
 Care should be taken when using \code{skip = TRUE} as it may affect
-the computations for subsequent operations}
+the computations for subsequent operations.}
 
 \item{seed}{An integer that will be used as the seed when downsampling.}
 
 \item{id}{A character string that is unique to this step to identify it.}
-
-\item{x}{A \code{step_downsample} object.}
 }
 \value{
 An updated version of \code{recipe} with the new step
@@ -78,10 +73,7 @@ of levels in a specific factor level equal.
 }
 \details{
 Down-sampling is intended to be performed on the \emph{training} set
-alone. For this reason, the default is \code{skip = TRUE}. It is
-advisable to use \code{prep(recipe, retain = TRUE)} when preparing
-the recipe; in this way \code{\link[=juice]{juice()}} can be used to obtain the
-down-sampled version of the data.
+alone. For this reason, the default is \code{skip = TRUE}.
 
 If there are missing values in the factor variable that is used
 to define the sampling, missing data are selected at random in
@@ -100,23 +92,62 @@ may have effects. For example, if centering and scaling,
 it is not clear whether those operations should be conducted
 \emph{before} or \emph{after} rows are removed.
 }
+\section{Tidying}{
+When you \code{\link[=tidy.recipe]{tidy()}} this step, a tibble with columns \code{terms}
+(the selectors or variables selected) will be returned.
+}
+
 \examples{
 library(recipes)
 library(modeldata)
-data(okc)
+data(hpc_data)
 
-sort(table(okc$diet, useNA = "always"))
+hpc_data0 <- hpc_data \%>\%
+  select(-protocol, -day)
 
-ds_rec <- recipe(~., data = okc) \%>\%
-  step_downsample(diet) \%>\%
-  prep(training = okc, retain = TRUE)
+orig <- count(hpc_data0, class, name = "orig")
+orig
 
-sort(table(bake(ds_rec, new_data = NULL)$diet, useNA = "always"))
+up_rec <- recipe(class ~ ., data = hpc_data0) \%>\%
+  # Bring the majority levels down to about 1000 each
+  # 1000/259 is approx 3.862
+  step_downsample(class, under_ratio = 3.862) \%>\%
+  prep()
 
-# since `skip` defaults to TRUE, baking the step has no effect
-baked_okc <- bake(ds_rec, new_data = okc)
-table(baked_okc$diet, useNA = "always")
+training <- up_rec \%>\%
+  bake(new_data = NULL) \%>\%
+  count(class, name = "training")
+training
+
+# Since `skip` defaults to TRUE, baking the step has no effect
+baked <- up_rec \%>\%
+  bake(new_data = hpc_data0) \%>\%
+  count(class, name = "baked")
+baked
+
+# Note that if the original data contained more rows than the
+# target n (= ratio * majority_n), the data are left alone:
+orig \%>\%
+  left_join(training, by = "class") \%>\%
+  left_join(baked, by = "class")
+
+library(ggplot2)
+
+ggplot(circle_example, aes(x, y, color = class)) +
+  geom_point() +
+  labs(title = "Without downsample")
+
+recipe(class ~ x + y, data = circle_example) \%>\%
+  step_downsample(class) \%>\%
+  prep() \%>\%
+  bake(new_data = NULL) \%>\%
+  ggplot(aes(x, y, color = class)) +
+  geom_point() +
+  labs(title = "With downsample")
 }
-\concept{preprocessing}
-\concept{subsampling}
-\keyword{datagen}
+\seealso{
+Other Steps for under-sampling: 
+\code{\link{step_nearmiss}()},
+\code{\link{step_tomek}()}
+}
+\concept{Steps for under-sampling}

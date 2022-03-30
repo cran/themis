@@ -1,4 +1,4 @@
-#' Apply ROSE algorithm
+#' Apply ROSE Algorithm
 #'
 #' `step_rose` creates a *specification* of a recipe
 #'  step that generates sample of synthetic data by enlarging the features
@@ -44,11 +44,14 @@
 #' All columns in the data are sampled and returned by [juice()]
 #'  and [bake()].
 #'
-#' All columns used in this step must be numeric.
-#'
 #' When used in modeling, users should strongly consider using the
 #'  option `skip = TRUE` so that the extra sampling is _not_
 #'  conducted outside of the training set.
+#'
+#' # Tidying
+#'
+#' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
+#' (the selectors or variables selected) will be returned.
 #'
 #' @references Lunardon, N., Menardi, G., and Torelli, N. (2014). ROSE: a
 #'  Package for Binary Imbalanced Learning. R Jorunal, 6:82–92.
@@ -56,32 +59,39 @@
 #'  classification rules with imbalanced data. Data Mining and Knowledge
 #'  Discovery, 28:92–122.
 #'
-#' @keywords datagen
-#' @concept preprocessing
-#' @concept subsampling
+#' @family Steps for over-sampling
+#'
 #' @export
 #' @examples
 #' library(recipes)
 #' library(modeldata)
-#' data(okc)
+#' data(hpc_data)
 #'
-#' sort(table(okc$Class, useNA = "always"))
+#' hpc_data0 <- hpc_data %>%
+#'   mutate(class = factor(class == "VF", labels = c("not VF", "VF"))) %>%
+#'   select(-protocol, -day)
 #'
-#' ds_rec <- recipe(Class ~ age + height, data = okc) %>%
-#'   step_rose(Class) %>%
+#' orig <- count(hpc_data0, class, name = "orig")
+#' orig
+#'
+#' up_rec <- recipe(class ~ ., data = hpc_data0) %>%
+#'   step_rose(class) %>%
 #'   prep()
 #'
-#' sort(table(bake(ds_rec, new_data = NULL)$Class, useNA = "always"))
+#' training <- up_rec %>%
+#'   bake(new_data = NULL) %>%
+#'   count(class, name = "training")
+#' training
 #'
-#' # since `skip` defaults to TRUE, baking the step has no effect
-#' baked_okc <- bake(ds_rec, new_data = okc)
-#' table(baked_okc$Class, useNA = "always")
+#' # Since `skip` defaults to TRUE, baking the step has no effect
+#' baked <- up_rec %>%
+#'   bake(new_data = hpc_data0) %>%
+#'   count(class, name = "baked")
+#' baked
 #'
-#' ds_rec2 <- recipe(Class ~ age + height, data = okc) %>%
-#'   step_rose(Class, minority_prop = 0.3) %>%
-#'   prep()
-#'
-#' table(bake(ds_rec2, new_data = NULL)$Class, useNA = "always")
+#' orig %>%
+#'   left_join(training, by = "class") %>%
+#'   left_join(baked, by = "class")
 #'
 #' library(ggplot2)
 #'
@@ -89,7 +99,7 @@
 #'   geom_point() +
 #'   labs(title = "Without ROSE")
 #'
-#' recipe(class ~ ., data = circle_example) %>%
+#' recipe(class ~ x + y, data = circle_example) %>%
 #'   step_rose(class) %>%
 #'   prep() %>%
 #'   bake(new_data = NULL) %>%
@@ -104,7 +114,7 @@ step_rose <-
     add_step(
       recipe,
       step_rose_new(
-        terms = ellipse_check(...),
+        terms = enquos(...),
         role = role,
         trained = trained,
         column = column,
@@ -143,19 +153,17 @@ step_rose_new <-
 
 #' @export
 prep.step_rose <- function(x, training, info = NULL, ...) {
-  col_name <- terms_select(x$terms, info = info)
-  if (length(col_name) != 1) {
-    rlang::abort("Please select a single factor variable.")
+  col_name <- recipes_eval_select(x$terms, training, info)
+  if (length(col_name) > 1) {
+    rlang::abort("The selector should select at most a single variable")
   }
-  if (!is.factor(training[[col_name]])) {
-    rlang::abort(paste0(col_name, " should be a factor variable."))
+  if (length(col_name) == 1) {
+    check_column_factor(training, col_name)
+    check_2_levels_only(training, col_name)
   }
-
-  check_2_levels_only(training, col_name)
 
   predictors <- setdiff(info$variable[info$role == "predictor"], col_name)
-
-  check_type(training[, predictors], TRUE)
+  check_na(select(training, all_of(col_name)), "step_rose")
 
   step_rose_new(
     terms = x$terms,
@@ -176,6 +184,11 @@ prep.step_rose <- function(x, training, info = NULL, ...) {
 
 #' @export
 bake.step_rose <- function(object, new_data, ...) {
+  if (length(object$column) == 0L) {
+    # Empty selection
+    return(new_data)
+  }
+
   if (any(is.na(new_data[[object$column]]))) {
     missing <- new_data[is.na(new_data[[object$column]]), ]
   } else {
@@ -215,19 +228,18 @@ bake.step_rose <- function(object, new_data, ...) {
 #' @export
 print.step_rose <-
   function(x, width = max(20, options()$width - 26), ...) {
-    cat("ROSE based on ", sep = "")
-    printer(x$column, x$terms, x$trained, width = width)
+    title <- "ROSE based on "
+    print_step(x$column, x$terms, x$trained, title, width)
     invisible(x)
   }
 
-#' @rdname step_rose
+#' @rdname tidy.recipe
 #' @param x A `step_rose` object.
 #' @export
 tidy.step_rose <- function(x, ...) {
   if (is_trained(x)) {
-    res <- tibble(terms = x$column)
-  }
-  else {
+    res <- tibble(terms = unname(x$column))
+  } else {
     term_names <- sel2char(x$terms)
     res <- tibble(terms = unname(term_names))
   }

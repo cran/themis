@@ -2,7 +2,7 @@
 % Please edit documentation in R/bsmote_impl.R
 \name{bsmote}
 \alias{bsmote}
-\title{borderline-SMOTE algorithm}
+\title{borderline-SMOTE Algorithm}
 \usage{
 bsmote(df, var, k = 5, over_ratio = 1, all_neighbors = FALSE)
 }
@@ -54,13 +54,15 @@ The parameter \code{neighbors} controls how many of these neighbor are used.
 All columns used in this step must be numeric with no missing data.
 }
 \examples{
-bsmote(circle_example, var = "class")
+circle_numeric <- circle_example[, c("x", "y", "class")]
 
-bsmote(circle_example, var = "class", k = 10)
+res <- bsmote(circle_numeric, var = "class")
 
-bsmote(circle_example, var = "class", over_ratio = 0.8)
+res <- bsmote(circle_numeric, var = "class", k = 10)
 
-bsmote(circle_example, var = "class", all_neighbors = TRUE)
+res <- bsmote(circle_numeric, var = "class", over_ratio = 0.8)
+
+res <- bsmote(circle_numeric, var = "class", all_neighbors = TRUE)
 }
 \references{
 Hui Han, Wen-Yuan Wang, and Bing-Huan Mao. Borderline-smote:
@@ -68,3 +70,13 @@ a new over-sampling method in imbalanced data sets learning. In
 International Conference on Intelligent Computing, pages 878–887. Springer,
 2005.
 }
+\seealso{
+\code{\link[=step_bsmote]{step_bsmote()}} for step function of this method
+
+Other Direct Implementations: 
+\code{\link{adasyn}()},
+\code{\link{nearmiss}()},
+\code{\link{smotenc}()},
+\code{\link{smote}()}
+}
+\concept{Direct Implementations}
