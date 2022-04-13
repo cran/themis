@@ -1,7 +1,7 @@
-b713a97a02238c0621fbb6f63e1d2a3c *DESCRIPTION
+9bf4dd4f98e9eafd58f691d66ec3b87e *DESCRIPTION
 8fc0d8e1cf835e1670787e63b4801f78 *LICENSE
 e4a4932079e7512057727312f9825f1e *NAMESPACE
-31d958ecc798f7546ddee92ab2d1aad6 *NEWS.md
+110f227c51015204b02e5f515a4b437d *NEWS.md
 c263a331dcf2602871d72969d1ce2534 *R/adasyn_impl.R
 c9b099a7258ce8928a3cdd0e940a6980 *R/bsmote_impl.R
 ef0f647228746e52320ee138166ab572 *R/data.R
@@ -12,13 +12,13 @@ d179019a984d149a9100f5f89c251e66 *R/smote_impl.R
 b4f801ee094ab931636bb14c486756b3 *R/smotenc_impl.R
 b6f4fe86bfb7c100372bb09ae7499ea5 *R/step_adasyn.R
 07123019741b1ce33dbca901a362ad1e *R/step_bsmote.R
-bd420cdb5258c86e2b2120c76e18781b *R/step_downsample.R
+636c14c2fb5d0f8554665f9fdfa68d64 *R/step_downsample.R
 e1f560c0749910989c7b982b39e56755 *R/step_nearmiss.R
 84925663f6a442a4650de84a693ec93f *R/step_rose.R
 7ea005ca7c463b6ed90d6cf70b5e770a *R/step_smote.R
 76b8d538268a4169f0361fc733b34b83 *R/step_smotenc.R
 63fe84303dfc6bcbbdf865bf7829a681 *R/step_tomek.R
-a0a6595c0f9f7f100e4695702dcd5f41 *R/step_upsample.R
+2d23cbb179426d0595d848ace1d976e8 *R/step_upsample.R
 3fa89a700948ae596f83df1088e5c85a *R/themis-package.R
 21c0f1af5919f727d8a3181c9cb891be *R/tidy.R
 dbaf7ed434f5fb3ba7af53f37d0fa9c0 *R/tuneable.R
