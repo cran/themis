@@ -21,7 +21,7 @@ test_that("printing", {
   rec <- recipe(class ~ x + y, data = circle_example) %>%
     step_tomek(class)
   expect_snapshot(print(rec))
-  expect_snapshot(prep(rec, verbose = TRUE))
+  expect_snapshot(prep(rec))
 })
 
 test_that("bad data", {
@@ -84,19 +84,6 @@ test_that("test tidy()", {
 
   expect_equal(untrained, tidy(rec, number = 1))
   expect_equal(trained, tidy(rec_p, number = 1))
-})
-
-test_that("only except 2 classes", {
-  df_char <- data.frame(
-    x = factor(1:3),
-    stringsAsFactors = FALSE
-  )
-
-  expect_snapshot(error = TRUE,
-    recipe(~., data = df_char) %>%
-      step_tomek(x) %>%
-      prep()
-  )
 })
 
 test_that("factor levels are not affected by alphabet ordering or class sizes", {

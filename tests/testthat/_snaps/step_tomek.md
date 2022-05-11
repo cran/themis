@@ -18,11 +18,8 @@
 ---
 
     Code
-      prep(rec, verbose = TRUE)
+      prep(rec)
     Output
-      oper 1 step tomek [training] 
-      The retained training set is ~ 0.01 Mb  in memory.
-      
       Recipe
       
       Inputs:
@@ -64,13 +61,6 @@
       recipe(Status ~ Age, data = credit_data0) %>% step_tomek(Status) %>% prep()
     Error <rlang_error>
       `step_tomek` cannot have any missing values. NAs found ind: Status.
-
-# only except 2 classes
-
-    Code
-      recipe(~., data = df_char) %>% step_tomek(x) %>% prep()
-    Error <rlang_error>
-      `x` must only have 2 levels.
 
 # empty printing
 
