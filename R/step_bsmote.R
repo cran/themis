@@ -60,6 +60,8 @@
 #' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
 #' (the selectors or variables selected) will be returned.
 #'
+#' @template case-weights-not-supported
+#'
 #' @references Hui Han, Wen-Yuan Wang, and Bing-Huan Mao. Borderline-smote:
 #' a new over-sampling method in imbalanced data sets learning. In
 #' International Conference on Intelligent Computing, pages 878–887. Springer,
@@ -177,7 +179,7 @@ prep.step_bsmote <- function(x, training, info = NULL, ...) {
     check_column_factor(training, col_name)
   }
 
-  predictors <- setdiff(info$variable[info$role == "predictor"], col_name)
+  predictors <- setdiff(get_from_info(info, "predictor"), col_name)
 
   check_type(training[, predictors], TRUE)
   check_na(select(training, all_of(c(col_name, predictors))), "step_bsmote")
@@ -199,6 +201,9 @@ prep.step_bsmote <- function(x, training, info = NULL, ...) {
 
 #' @export
 bake.step_bsmote <- function(object, new_data, ...) {
+  col_names <- unique(c(object$predictors, object$column))
+  check_new_data(col_names, object, new_data)
+
   if (length(object$column) == 0L) {
     # Empty selection
     return(new_data)
@@ -206,7 +211,7 @@ bake.step_bsmote <- function(object, new_data, ...) {
 
   new_data <- as.data.frame(new_data)
 
-  predictor_data <- new_data[, unique(c(object$predictors, object$column))]
+  predictor_data <- new_data[, col_names]
   # bsmote with seed for reproducibility
   with_seed(
     seed = object$seed,
@@ -218,11 +223,12 @@ bake.step_bsmote <- function(object, new_data, ...) {
         over_ratio = object$over_ratio,
         all_neighbors = object$all_neighbors
       )
+      synthetic_data <- as_tibble(synthetic_data)
     }
   )
   new_data <- na_splice(new_data, synthetic_data, object)
 
-  as_tibble(new_data)
+  new_data
 }
 
 #' @export

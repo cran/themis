@@ -58,11 +58,34 @@ na_splice <- function(new_data, synthetic_data, object) {
     bind_rows(new_data[, non_predictor, drop = FALSE], na_data)
   )
 
-  res[, names(new_data)]
+  res <- res[, names(new_data)]
+
+  as_tibble(res)
 }
 
 #https://stackoverflow.com/questions/2547402/how-to-find-the-statistical-mode
 Mode <- function(x) {
   ux <- unique(x)
   ux[which.max(tabulate(match(x, ux)))]
+}
+
+weighted_table <- function(x, wts = NULL) {
+  if (is.null(wts)) {
+    wts <- rep(1, length(x))
+  }
+
+  if (!is.factor(x)) {
+    x <- factor(x)
+  }
+
+  hardhat::weighted_table(x, weights = wts)
+}
+
+get_from_info <- function(info, role, na_rm = TRUE) {
+  res <- info$variable[info$role == role]
+
+  if (na_rm) {
+    res <- stats::na.omit(res)
+  }
+  res
 }

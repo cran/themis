@@ -41,6 +41,18 @@ test_that("basic usage", {
   expect_warning(prep(rec1), NA)
 })
 
+test_that("bake method errors when needed non-standard role columns are missing", {
+  rec <- recipe(class ~ x + y, data = circle_example) %>%
+    step_upsample(class, skip = FALSE) %>%
+    add_role(class, new_role = "potato") %>%
+    update_role_requirements(role = "potato", bake = FALSE)
+
+  trained <- prep(rec, training = circle_example, verbose = FALSE)
+
+  expect_error(bake(trained, new_data = circle_example[, -3]),
+               class = "new_data_missing_column")
+})
+
 test_that("printing", {
   rec <- recipe(~., data = circle_example) %>%
     step_upsample(class)
@@ -229,4 +241,48 @@ test_that("empty printing", {
   rec <- prep(rec, mtcars)
 
   expect_snapshot(rec)
+})
+
+test_that("case_weights", {
+  circle_example_cw <- circle_example %>%
+    mutate(weights = frequency_weights(rep(0:1, c(200, 200))))
+
+  rec1_p <- recipe(~., data = circle_example_cw) %>%
+    step_upsample(class, over_ratio = 2) %>%
+    prep()
+
+  exp_count <- circle_example_cw %>%
+    filter(as.integer(weights) == 1) %>%
+    count(class) %>%
+    pull(n) %>%
+    max()
+
+  rec_count <- bake(rec1_p, new_data = NULL) %>%
+    count(class) %>%
+    pull(n)
+
+  expect_true(all(exp_count * 2 == rec_count))
+
+  expect_snapshot(rec1_p)
+
+  # ignore importance weights
+  circle_example_cw <- circle_example %>%
+    mutate(weights = importance_weights(rep(0:1, c(200, 200))))
+
+  rec1_p <- recipe(~., data = circle_example_cw) %>%
+    step_upsample(class) %>%
+    prep()
+
+  exp_count <- circle_example_cw %>%
+    count(class) %>%
+    pull(n) %>%
+    max()
+
+  rec_count <- bake(rec1_p, new_data = NULL) %>%
+    count(class) %>%
+    pull(n)
+
+  expect_true(all(exp_count == rec_count))
+
+  expect_snapshot(rec1_p)
 })

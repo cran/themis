@@ -47,6 +47,8 @@
 #' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
 #' (the selectors or variables selected) will be returned.
 #'
+#' @template case-weights-not-supported
+#'
 #' @references Chawla, N. V., Bowyer, K. W., Hall, L. O., and Kegelmeyer,
 #'  W. P. (2002). Smote: Synthetic minority over-sampling technique.
 #'  Journal of Artificial Intelligence Research, 16:321-357.
@@ -137,7 +139,7 @@ prep.step_smotenc <- function(x, training, info = NULL, ...) {
     check_column_factor(training, col_name)
   }
 
-  predictors <- setdiff(info$variable[info$role == "predictor"], col_name)
+  predictors <- setdiff(get_from_info(info, "predictor"), col_name)
   check_na(select(training, all_of(c(col_name, predictors))), "step_smotenc")
 
   step_smotenc_new(
@@ -156,6 +158,8 @@ prep.step_smotenc <- function(x, training, info = NULL, ...) {
 
 #' @export
 bake.step_smotenc <- function(object, new_data, ...) {
+  col_names <- unique(c(object$predictors, object$column))
+  check_new_data(col_names, object, new_data)
   if (length(object$column) == 0L) {
     # Empty selection
     return(new_data)
@@ -163,7 +167,7 @@ bake.step_smotenc <- function(object, new_data, ...) {
 
   new_data <- as.data.frame(new_data)
 
-  predictor_data <- new_data[, unique(c(object$predictors, object$column))]
+  predictor_data <- new_data[, col_names]
 
   # smotenc with seed for reproducibility
   with_seed(
@@ -175,11 +179,12 @@ bake.step_smotenc <- function(object, new_data, ...) {
         k = object$neighbors,
         over_ratio = object$over_ratio
       )
+      synthetic_data <- as_tibble(synthetic_data)
     }
   )
   new_data <- na_splice(new_data, synthetic_data, object)
 
-  as_tibble(new_data)
+  new_data
 }
 
 #' @export

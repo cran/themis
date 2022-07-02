@@ -39,6 +39,8 @@
 #' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
 #' (the selectors or variables selected) will be returned.
 #'
+#' @template case-weights-not-supported
+#'
 #' @references Tomek. Two modifications of cnn. IEEE Trans. Syst. Man Cybern.,
 #'  6:769-772, 1976.
 #'
@@ -139,7 +141,7 @@ prep.step_tomek <- function(x, training, info = NULL, ...) {
     check_column_factor(training, col_name)
   }
 
-  predictors <- setdiff(info$variable[info$role == "predictor"], col_name)
+  predictors <- setdiff(get_from_info(info, "predictor"), col_name)
   check_type(training[, predictors], TRUE)
   check_na(select(training, all_of(c(col_name, predictors))), "step_tomek")
 
@@ -157,12 +159,15 @@ prep.step_tomek <- function(x, training, info = NULL, ...) {
 
 #' @export
 bake.step_tomek <- function(object, new_data, ...) {
+  col_names <- unique(c(object$predictors, object$column))
+  check_new_data(col_names, object, new_data)
+
   if (length(object$column) == 0L) {
     # Empty selection
     return(new_data)
   }
 
-  predictor_data <- new_data[, unique(c(object$predictors, object$column))]
+  predictor_data <- new_data[, col_names]
 
   # tomek with seed for reproducibility
   with_seed(

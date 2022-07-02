@@ -42,6 +42,8 @@
 #' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
 #' (the selectors or variables selected) will be returned.
 #'
+#' @template case-weights-not-supported
+#'
 #' @references Inderjeet Mani and I Zhang. knn approach to unbalanced data
 #' distributions: a case study involving information extraction. In Proceedings
 #' of workshop on learning from imbalanced datasets, 2003.
@@ -154,7 +156,7 @@ prep.step_nearmiss <- function(x, training, info = NULL, ...) {
     check_column_factor(training, col_name)
   }
 
-  predictors <- setdiff(info$variable[info$role == "predictor"], col_name)
+  predictors <- setdiff(get_from_info(info, "predictor"), col_name)
 
   check_type(training[, predictors], TRUE)
   check_na(select(training, all_of(c(col_name, predictors))), "step_nearmiss")
@@ -175,12 +177,15 @@ prep.step_nearmiss <- function(x, training, info = NULL, ...) {
 
 #' @export
 bake.step_nearmiss <- function(object, new_data, ...) {
+  col_names <- unique(c(object$predictors, object$column))
+  check_new_data(col_names, object, new_data)
+
   if (length(object$column) == 0L) {
     # Empty selection
     return(new_data)
   }
 
-  ignore_vars <- setdiff(names(new_data), c(object$predictors, object$column))
+  ignore_vars <- setdiff(names(new_data), col_names)
 
   # nearmiss with seed for reproducibility
   with_seed(
@@ -201,7 +206,7 @@ bake.step_nearmiss <- function(object, new_data, ...) {
     }
   )
 
-  as_tibble(new_data)
+  new_data
 }
 
 #' @export

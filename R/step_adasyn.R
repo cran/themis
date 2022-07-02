@@ -38,6 +38,8 @@
 #' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
 #' (the selectors or variables selected) will be returned.
 #'
+#' @template case-weights-not-supported
+#'
 #' @references He, H., Bai, Y., Garcia, E. and Li, S. 2008. ADASYN: Adaptive
 #'  synthetic sampling approach for imbalanced learning. Proceedings of
 #'  IJCNN 2008. (IEEE World Congress on Computational Intelligence). IEEE
@@ -145,7 +147,7 @@ prep.step_adasyn <- function(x, training, info = NULL, ...) {
     check_column_factor(training, col_name)
   }
 
-  predictors <- setdiff(info$variable[info$role == "predictor"], col_name)
+  predictors <- setdiff(get_from_info(info, "predictor"), col_name)
   check_type(training[, predictors], TRUE)
   check_na(select(training, all_of(c(col_name, predictors))), "step_adasyn")
 
@@ -165,6 +167,9 @@ prep.step_adasyn <- function(x, training, info = NULL, ...) {
 
 #' @export
 bake.step_adasyn <- function(object, new_data, ...) {
+  col_names <- unique(c(object$predictors, object$column))
+  check_new_data(col_names, object, new_data)
+
   if (length(object$column) == 0L) {
     # Empty selection
     return(new_data)
@@ -172,7 +177,7 @@ bake.step_adasyn <- function(object, new_data, ...) {
 
   new_data <- as.data.frame(new_data)
 
-  predictor_data <- new_data[, unique(c(object$predictors, object$column))]
+  predictor_data <- new_data[, col_names]
 
   # adasyn with seed for reproducibility
   with_seed(
@@ -184,11 +189,12 @@ bake.step_adasyn <- function(object, new_data, ...) {
         k = object$neighbors,
         over_ratio = object$over_ratio
       )
+      synthetic_data <- as_tibble(synthetic_data)
     }
   )
   new_data <- na_splice(new_data, synthetic_data, object)
 
-  as_tibble(new_data)
+  new_data
 }
 
 #' @export

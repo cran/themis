@@ -1,3 +1,7 @@
+# themis 1.0.0
+
+* Added case weights support for `step_upsample()` and `step_downsample()`
+
 # themis 0.2.2
 
 * `tomek()` has been added, rewritten to apply to multiple classes, removing the need for the unbalanced package, which has been removed as a dependency. 

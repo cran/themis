@@ -53,6 +53,8 @@
 #' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
 #' (the selectors or variables selected) will be returned.
 #'
+#' @template case-weights-not-supported
+#'
 #' @references Lunardon, N., Menardi, G., and Torelli, N. (2014). ROSE: a
 #'  Package for Binary Imbalanced Learning. R Jorunal, 6:82–92.
 #' @references Menardi, G. and Torelli, N. (2014). Training and assessing
@@ -162,7 +164,7 @@ prep.step_rose <- function(x, training, info = NULL, ...) {
     check_2_levels_only(training, col_name)
   }
 
-  predictors <- setdiff(info$variable[info$role == "predictor"], col_name)
+  predictors <- setdiff(get_from_info(info, "predictor"), col_name)
   check_na(select(training, all_of(col_name)), "step_rose")
 
   step_rose_new(
@@ -184,6 +186,9 @@ prep.step_rose <- function(x, training, info = NULL, ...) {
 
 #' @export
 bake.step_rose <- function(object, new_data, ...) {
+  col_names <- unique(c(object$predictors, object$column))
+  check_new_data(col_names, object, new_data)
+
   if (length(object$column) == 0L) {
     # Empty selection
     return(new_data)
@@ -197,7 +202,7 @@ bake.step_rose <- function(object, new_data, ...) {
 
   new_data <- as.data.frame(new_data)
 
-  predictor_data <- new_data[, unique(c(object$predictors, object$column))]
+  predictor_data <- new_data[, col_names]
 
   # rose with seed for reproducibility
   majority_size <- max(table(predictor_data[[object$column]])) * 2
@@ -218,11 +223,12 @@ bake.step_rose <- function(object, new_data, ...) {
         synthetic_data[[object$column]],
         levels = original_levels
       )
+      synthetic_data <- as_tibble(synthetic_data)
     }
   )
   new_data <- na_splice(new_data, synthetic_data, object)
 
-  as_tibble(new_data)
+  new_data
 }
 
 #' @export
