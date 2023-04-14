@@ -6,6 +6,8 @@
 \alias{themis-package}
 \title{themis: Extra Recipes Steps for Dealing with Unbalanced Data}
 \description{
+\if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
+
 A dataset with an uneven number of cases in each class is said to be unbalanced. Many models produce a subpar performance on unbalanced datasets. A dataset can be balanced by increasing the number of minority cases using SMOTE 2011 \href{https://arxiv.org/abs/1106.1813}{arXiv:1106.1813}, BorderlineSMOTE 2005 \doi{10.1007/11538059_91} and ADASYN 2008 \url{https://ieeexplore.ieee.org/document/4633969}. Or by decreasing the number of majority cases using NearMiss 2003 \url{https://www.site.uottawa.ca/~nat/Workshop2003/jzhang.pdf} or Tomek link removal 1976 \url{https://ieeexplore.ieee.org/document/4309452}.
 }
 \seealso{
@@ -13,13 +15,17 @@ Useful links:
 \itemize{
   \item \url{https://github.com/tidymodels/themis}
   \item \url{https://themis.tidymodels.org}
-  \item \url{https://themis.tidymodels.org/}
   \item Report bugs at \url{https://github.com/tidymodels/themis/issues}
 }
 
 }
 \author{
-\strong{Maintainer}: Emil Hvitfeldt \email{emilhhvitfeldt@gmail.com} (\href{https://orcid.org/0000-0002-0679-1945}{ORCID})
+\strong{Maintainer}: Emil Hvitfeldt \email{emil.hvitfeldt@posit.co} (\href{https://orcid.org/0000-0002-0679-1945}{ORCID})
+
+Other contributors:
+\itemize{
+  \item Posit Software, PBC [copyright holder, funder]
+}
 
 }
 \keyword{internal}

@@ -25,8 +25,8 @@
 #'  the variable used to sample.
 #'
 #' @details
-#' This methods retained the points form the majority classes which has the
-#' smallest mean distance to the k nearest points in the other classes.
+#' This method retains the points from the majority class which have the
+#' smallest mean distance to the k nearest points in the minority class.
 #'
 #' All columns in the data are sampled and returned by [juice()]
 #'  and [bake()].
@@ -41,6 +41,12 @@
 #'
 #' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
 #' (the selectors or variables selected) will be returned.
+#'
+#' ```{r, echo = FALSE, results="asis"}
+#' step <- "step_nearmiss"
+#' result <- knitr::knit_child("man/rmd/tunable-args.Rmd")
+#' cat(result)
+#' ```
 #'
 #' @template case-weights-not-supported
 #'
@@ -158,8 +164,8 @@ prep.step_nearmiss <- function(x, training, info = NULL, ...) {
 
   predictors <- setdiff(get_from_info(info, "predictor"), col_name)
 
-  check_type(training[, predictors], TRUE)
-  check_na(select(training, all_of(c(col_name, predictors))), "step_nearmiss")
+  check_type(training[, predictors], types = c("double", "integer"))
+  check_na(select(training, all_of(c(col_name, predictors))))
 
   step_nearmiss_new(
     terms = x$terms,
@@ -231,7 +237,20 @@ tidy.step_nearmiss <- function(x, ...) {
   res
 }
 
-
+#' @export
+#' @rdname tunable_themis
+tunable.step_nearmiss <- function(x, ...) {
+  tibble::tibble(
+    name = c("under_ratio", "neighbors"),
+    call_info = list(
+      list(pkg = "dials", fun = "under_ratio"),
+      list(pkg = "dials", fun = "neighbors", range = c(1, 10))
+    ),
+    source = "recipe",
+    component = "step_nearmiss",
+    component_id = x$id
+  )
+}
 
 #' @rdname required_pkgs.step
 #' @export

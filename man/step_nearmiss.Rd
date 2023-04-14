@@ -71,8 +71,8 @@ in the majority class based on their distance to other points in the
 same class.
 }
 \details{
-This methods retained the points form the majority classes which has the
-smallest mean distance to the k nearest points in the other classes.
+This method retains the points from the majority class which have the
+smallest mean distance to the k nearest points in the minority class.
 
 All columns in the data are sampled and returned by \code{\link[=juice]{juice()}}
 and \code{\link[=bake]{bake()}}.
@@ -86,6 +86,14 @@ conducted outside of the training set.
 \section{Tidying}{
 When you \code{\link[=tidy.recipe]{tidy()}} this step, a tibble with columns \code{terms}
 (the selectors or variables selected) will be returned.
+}
+
+\section{Tuning Parameters}{
+This step has 2 tuning parameters:
+\itemize{
+\item \code{under_ratio}: Under-Sampling Ratio (type: double, default: 1)
+\item \code{neighbors}: # Nearest Neighbors (type: integer, default: 5)
+}
 }
 
 \section{Case weights}{

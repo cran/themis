@@ -46,6 +46,12 @@
 #' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
 #' (the selectors or variables selected) will be returned.
 #'
+#' ```{r, echo = FALSE, results="asis"}
+#' step <- "step_smote"
+#' result <- knitr::knit_child("man/rmd/tunable-args.Rmd")
+#' cat(result)
+#' ```
+#'
 #' @template case-weights-not-supported
 #'
 #' @references Chawla, N. V., Bowyer, K. W., Hall, L. O., and Kegelmeyer,
@@ -155,8 +161,9 @@ prep.step_smote <- function(x, training, info = NULL, ...) {
   }
 
   predictors <- setdiff(get_from_info(info, "predictor"), col_name)
-  check_type(training[, predictors], TRUE)
-  check_na(select(training, all_of(c(col_name, predictors))), "step_smote")
+
+  check_type(training[, predictors], types = c("double", "integer"))
+  check_na(select(training, all_of(c(col_name, predictors))))
 
   step_smote_new(
     terms = x$terms,
@@ -226,6 +233,20 @@ tidy.step_smote <- function(x, ...) {
   res
 }
 
+#' @export
+#' @rdname tunable_themis
+tunable.step_smote <- function(x, ...) {
+  tibble::tibble(
+    name = c("over_ratio", "neighbors"),
+    call_info = list(
+      list(pkg = "dials", fun = "over_ratio"),
+      list(pkg = "dials", fun = "neighbors", range = c(1, 10))
+    ),
+    source = "recipe",
+    component = "step_smote",
+    component_id = x$id
+  )
+}
 
 #' @rdname required_pkgs.step
 #' @export

@@ -49,6 +49,12 @@
 #' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
 #' (the selectors or variables selected) will be returned.
 #'
+#' ```{r, echo = FALSE, results="asis"}
+#' step <- "step_upsample"
+#' result <- knitr::knit_child("man/rmd/tunable-args.Rmd")
+#' cat(result)
+#' ```
+#'
 #' @template case-weights-unsupervised
 #'
 #' @family Steps for over-sampling
@@ -175,7 +181,7 @@ prep.step_upsample <- function(x, training, info = NULL, ...) {
     majority <- max(obs_freq)
   }
 
-  check_na(select(training, all_of(col_name)), "step_upsample")
+  check_na(select(training, all_of(col_name)))
 
   step_upsample_new(
     terms = x$terms,
@@ -269,6 +275,20 @@ tidy.step_upsample <- function(x, ...) {
   }
   res$id <- x$id
   res
+}
+
+#' @export
+#' @rdname tunable_themis
+tunable.step_upsample <- function(x, ...) {
+  tibble::tibble(
+    name = c("over_ratio"),
+    call_info = list(
+      list(pkg = "dials", fun = "over_ratio")
+    ),
+    source = "recipe",
+    component = "step_upsample",
+    component_id = x$id
+  )
 }
 
 #' @rdname required_pkgs.step

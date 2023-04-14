@@ -38,6 +38,12 @@
 #' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
 #' (the selectors or variables selected) will be returned.
 #'
+#' ```{r, echo = FALSE, results="asis"}
+#' step <- "step_adasyn"
+#' result <- knitr::knit_child("man/rmd/tunable-args.Rmd")
+#' cat(result)
+#' ```
+#'
 #' @template case-weights-not-supported
 #'
 #' @references He, H., Bai, Y., Garcia, E. and Li, S. 2008. ADASYN: Adaptive
@@ -148,8 +154,9 @@ prep.step_adasyn <- function(x, training, info = NULL, ...) {
   }
 
   predictors <- setdiff(get_from_info(info, "predictor"), col_name)
-  check_type(training[, predictors], TRUE)
-  check_na(select(training, all_of(c(col_name, predictors))), "step_adasyn")
+
+  check_type(training[, predictors], types = c("double", "integer"))
+  check_na(select(training, all_of(c(col_name, predictors))))
 
   step_adasyn_new(
     terms = x$terms,
@@ -219,6 +226,20 @@ tidy.step_adasyn <- function(x, ...) {
   res
 }
 
+#' @export
+#' @rdname tunable_themis
+tunable.step_adasyn <- function(x, ...) {
+  tibble::tibble(
+    name = c("over_ratio", "neighbors"),
+    call_info = list(
+      list(pkg = "dials", fun = "over_ratio"),
+      list(pkg = "dials", fun = "neighbors", range = c(1, 10))
+    ),
+    source = "recipe",
+    component = "step_adasyn",
+    component_id = x$id
+  )
+}
 
 #' S3 methods for tracking which additional packages are needed for steps.
 #'

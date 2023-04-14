@@ -2,99 +2,105 @@
 
     Code
       print(rec)
-    Output
-      Recipe
+    Message <cliMessage>
       
-      Inputs:
+      -- Recipe ----------------------------------------------------------------------
       
-            role #variables
-         outcome          1
-       predictor          2
+      -- Inputs 
+      Number of variables by role
+      outcome:   1
+      predictor: 2
       
-      Operations:
-      
-      BorderlineSMOTE based on class
+      -- Operations 
+      * BorderlineSMOTE based on: class
 
 ---
 
     Code
       prep(rec)
-    Output
-      Recipe
+    Message <cliMessage>
       
-      Inputs:
+      -- Recipe ----------------------------------------------------------------------
       
-            role #variables
-         outcome          1
-       predictor          2
+      -- Inputs 
+      Number of variables by role
+      outcome:   1
+      predictor: 2
       
-      Training data contained 400 data points and no missing data.
+      -- Training information 
+      Training data contained 400 data points and no incomplete rows.
       
-      Operations:
-      
-      BorderlineSMOTE based on class [trained]
+      -- Operations 
+      * BorderlineSMOTE based on: class | Trained
 
 # bad data
 
     Code
       rec %>% step_bsmote(x) %>% prep()
-    Error <rlang_error>
-      `x` should be a factor variable.
+    Error <recipes_error_step>
+      Error in `step_bsmote()`:
+      Caused by error in `prep()`:
+      ! `x` should be a factor variable.
 
 ---
 
     Code
       rec %>% step_bsmote(class, id) %>% prep()
-    Error <rlang_error>
-      The selector should select at most a single variable
+    Error <recipes_error_step>
+      Error in `step_bsmote()`:
+      Caused by error in `prep()`:
+      ! The selector should select at most a single variable
 
 # errors if character are present
 
     Code
       recipe(~., data = df_char) %>% step_bsmote(x) %>% prep()
-    Error <rlang_error>
-      All columns selected for the step should be numeric
+    Error <recipes_error_step>
+      Error in `step_bsmote()`:
+      Caused by error in `prep()`:
+      ! All columns selected for the step should be double, or integer.
 
 # NA in response
 
     Code
       recipe(Job ~ Age, data = credit_data) %>% step_bsmote(Job) %>% prep()
-    Error <rlang_error>
-      `step_bsmote` cannot have any missing values. NAs found ind: Job.
+    Error <recipes_error_step>
+      Error in `step_bsmote()`:
+      Caused by error in `prep()`:
+      ! Cannot have any missing values. NAs found ind: Job.
 
 # empty printing
 
     Code
       rec
-    Output
-      Recipe
+    Message <cliMessage>
       
-      Inputs:
+      -- Recipe ----------------------------------------------------------------------
       
-            role #variables
-         outcome          1
-       predictor         10
+      -- Inputs 
+      Number of variables by role
+      outcome:    1
+      predictor: 10
       
-      Operations:
-      
-      BorderlineSMOTE based on <none>
+      -- Operations 
+      * BorderlineSMOTE based on: <none>
 
 ---
 
     Code
       rec
-    Output
-      Recipe
+    Message <cliMessage>
       
-      Inputs:
+      -- Recipe ----------------------------------------------------------------------
       
-            role #variables
-         outcome          1
-       predictor         10
+      -- Inputs 
+      Number of variables by role
+      outcome:    1
+      predictor: 10
       
-      Training data contained 32 data points and no missing data.
+      -- Training information 
+      Training data contained 32 data points and no incomplete rows.
       
-      Operations:
-      
-      BorderlineSMOTE based on <none> [trained]
+      -- Operations 
+      * BorderlineSMOTE based on: <none> | Trained
 

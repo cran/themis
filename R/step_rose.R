@@ -53,6 +53,12 @@
 #' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
 #' (the selectors or variables selected) will be returned.
 #'
+#' ```{r, echo = FALSE, results="asis"}
+#' step <- "step_rose"
+#' result <- knitr::knit_child("man/rmd/tunable-args.Rmd")
+#' cat(result)
+#' ```
+#'
 #' @template case-weights-not-supported
 #'
 #' @references Lunardon, N., Menardi, G., and Torelli, N. (2014). ROSE: a
@@ -165,7 +171,7 @@ prep.step_rose <- function(x, training, info = NULL, ...) {
   }
 
   predictors <- setdiff(get_from_info(info, "predictor"), col_name)
-  check_na(select(training, all_of(col_name)), "step_rose")
+  check_na(select(training, all_of(col_name)))
 
   step_rose_new(
     terms = x$terms,
@@ -251,6 +257,20 @@ tidy.step_rose <- function(x, ...) {
   }
   res$id <- x$id
   res
+}
+
+#' @export
+#' @rdname tunable_themis
+tunable.step_rose <- function(x, ...) {
+  tibble::tibble(
+    name = c("over_ratio"),
+    call_info = list(
+      list(pkg = "dials", fun = "over_ratio")
+    ),
+    source = "recipe",
+    component = "step_rose",
+    component_id = x$id
+  )
 }
 
 #' @rdname required_pkgs.step

@@ -54,6 +54,12 @@
 #' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
 #' (the selectors or variables selected) will be returned.
 #'
+#' ```{r, echo = FALSE, results="asis"}
+#' step <- "step_downsample"
+#' result <- knitr::knit_child("man/rmd/tunable-args.Rmd")
+#' cat(result)
+#' ```
+#'
 #' @template case-weights-unsupervised
 #'
 #' @family Steps for under-sampling
@@ -179,7 +185,7 @@ prep.step_downsample <- function(x, training, info = NULL, ...) {
     minority <- min(obs_freq)
   }
 
-  check_na(select(training, all_of(col_name)), "step_downsample")
+  check_na(select(training, all_of(col_name)))
 
   step_downsample_new(
     terms = x$terms,
@@ -276,6 +282,19 @@ tidy.step_downsample <- function(x, ...) {
   res
 }
 
+#' @export
+#' @rdname tunable_themis
+tunable.step_downsample <- function(x, ...) {
+  tibble::tibble(
+    name = "under_ratio",
+    call_info = list(
+      list(pkg = "dials", fun = "under_ratio")
+    ),
+    source = "recipe",
+    component = "step_downsample",
+    component_id = x$id
+  )
+}
 
 #' @rdname required_pkgs.step
 #' @export
