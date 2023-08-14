@@ -8,13 +8,13 @@ set.seed(1234)
 test_that("ratio deprecation", {
   expect_snapshot(error = TRUE,
     new_rec <- recipe(~., data = circle_example) %>%
-      step_downsample(class, ratio = 2)
+      step_upsample(class, ratio = 2)
   )
 })
 
 test_that("basic usage", {
   rec1 <- recipe(~., data = circle_example) %>%
-    step_downsample(class)
+    step_upsample(class)
 
   rec1_p <- prep(rec1)
 
@@ -26,37 +26,18 @@ test_that("basic usage", {
   expect_warning(prep(rec1), NA)
 })
 
-test_that("bake method errors when needed non-standard role columns are missing", {
-  rec <- recipe(class ~ x + y, data = circle_example) %>%
-    step_downsample(class, skip = FALSE) %>%
-    add_role(class, new_role = "potato") %>%
-    update_role_requirements(role = "potato", bake = FALSE)
-
-  trained <- prep(rec, training = circle_example, verbose = FALSE)
-
-  expect_error(bake(trained, new_data = circle_example[, -3]),
-               class = "new_data_missing_column")
-})
-
-test_that("printing", {
-  rec <- recipe(~., data = circle_example) %>%
-    step_downsample(class)
-  expect_snapshot(print(rec))
-  expect_snapshot(prep(rec))
-})
-
 test_that("bad data", {
   rec <- recipe(~., data = circle_example)
   # numeric check
   expect_snapshot(error = TRUE,
     rec %>%
-      step_downsample(x) %>%
+      step_upsample(x) %>%
       prep()
   )
   # Multiple variable check
   expect_snapshot(error = TRUE,
     rec %>%
-      step_downsample(class, id) %>%
+      step_upsample(class, id) %>%
       prep()
   )
 })
@@ -64,7 +45,7 @@ test_that("bad data", {
 test_that("`seed` produces identical sampling", {
   step_with_seed <- function(seed = sample.int(10^5, 1)) {
     recipe(~., data = circle_example) %>%
-      step_downsample(class, seed = seed) %>%
+      step_upsample(class, seed = seed) %>%
       prep() %>%
       bake(new_data = NULL) %>%
       pull(x)
@@ -80,7 +61,7 @@ test_that("`seed` produces identical sampling", {
 
 test_that("test tidy()", {
   rec <- recipe(~., data = circle_example) %>%
-    step_downsample(class, id = "")
+    step_upsample(class, id = "")
 
   rec_p <- prep(rec)
 
@@ -98,21 +79,21 @@ test_that("test tidy()", {
   expect_equal(trained, tidy(rec_p, number = 1))
 })
 
-test_that("ratio value works when undersampling", {
+test_that("ratio value works when oversampling", {
   res1 <- recipe(~., data = circle_example) %>%
-    step_downsample(class) %>%
+    step_upsample(class) %>%
     prep() %>%
     bake(new_data = NULL)
 
   res1.5 <- recipe(~., data = circle_example) %>%
-    step_downsample(class, under_ratio = 1.5) %>%
+    step_upsample(class, over_ratio = 0.5) %>%
     prep() %>%
     bake(new_data = NULL)
 
-  expect_true(all(table(res1$class) == min(table(circle_example$class))))
+  expect_true(all(table(res1$class) == max(table(circle_example$class))))
   expect_equal(
     sort(as.numeric(table(res1.5$class))),
-    min(table(circle_example$class)) * c(1, 1.5)
+    max(table(circle_example$class)) * c(0.5, 1)
   )
 })
 
@@ -121,22 +102,22 @@ test_that("allows multi-class", {
   expect_error(
     recipe(Home ~ Age + Income + Assets, data = credit_data) %>%
       step_impute_mean(Income, Assets) %>%
-      step_downsample(Home),
+      step_upsample(Home),
     NA
   )
 })
 
-test_that("minority classes are ignored if there is more than 1", {
+test_that("majority classes are ignored if there is more than 1", {
   data("penguins")
   rec1_p2 <- recipe(species ~ bill_length_mm + bill_depth_mm,
-    data = penguins[-(1:84), ]
+    data = penguins[-(1:28), ]
   ) %>%
     step_impute_mean(all_predictors()) %>%
-    step_downsample(species) %>%
+    step_upsample(species) %>%
     prep() %>%
     bake(new_data = NULL)
 
-  expect_true(all(max(table(rec1_p2$species)) == 68))
+  expect_true(all(max(table(rec1_p2$species)) == 124))
 })
 
 test_that("factor levels are not affected by alphabet ordering or class sizes", {
@@ -160,7 +141,7 @@ test_that("factor levels are not affected by alphabet ordering or class sizes", 
 
   for (i in 1:4) {
     rec_p <- recipe(~., data = circle_example_alt_levels[[i]]) %>%
-      step_downsample(class) %>%
+      step_upsample(class) %>%
       prep()
 
     expect_equal(
@@ -174,12 +155,11 @@ test_that("factor levels are not affected by alphabet ordering or class sizes", 
   }
 })
 
-
 test_that("id variables don't turn predictors to factors", {
   # https://github.com/tidymodels/themis/issues/56
   rec_id <- recipe(class ~ ., data = circle_example) %>%
     update_role(id, new_role = "id") %>%
-    step_downsample(class) %>%
+    step_upsample(class) %>%
     prep() %>%
     bake(new_data = NULL)
 
@@ -187,67 +167,25 @@ test_that("id variables don't turn predictors to factors", {
   expect_equal(is.double(rec_id$y), TRUE)
 })
 
-
-test_that("empty selection prep/bake is a no-op", {
-  rec1 <- recipe(mpg ~ ., mtcars)
-  rec2 <- step_downsample(rec1)
-
-  rec1 <- prep(rec1, mtcars)
-  rec2 <- prep(rec2, mtcars)
-
-  baked1 <- bake(rec1, mtcars)
-  baked2 <- bake(rec2, mtcars)
-
-  expect_identical(baked1, baked1)
-})
-
-test_that("empty selection tidy method works", {
-  rec <- recipe(mpg ~ ., mtcars)
-  rec <- step_downsample(rec)
-
-  expect_identical(
-    tidy(rec, number = 1),
-    tibble(terms = character(), id = character())
-  )
-
-  rec <- prep(rec, mtcars)
-
-  expect_identical(
-    tidy(rec, number = 1),
-    tibble(terms = character(), id = character())
-  )
-})
-
-test_that("empty printing", {
-  rec <- recipe(mpg ~ ., mtcars)
-  rec <- step_downsample(rec)
-
-  expect_snapshot(rec)
-
-  rec <- prep(rec, mtcars)
-
-  expect_snapshot(rec)
-})
-
 test_that("case_weights", {
   circle_example_cw <- circle_example %>%
     mutate(weights = frequency_weights(rep(0:1, c(200, 200))))
 
   rec1_p <- recipe(~., data = circle_example_cw) %>%
-    step_downsample(class) %>%
+    step_upsample(class, over_ratio = 2) %>%
     prep()
 
   exp_count <- circle_example_cw %>%
     filter(as.integer(weights) == 1) %>%
     count(class) %>%
     pull(n) %>%
-    min()
+    max()
 
   rec_count <- bake(rec1_p, new_data = NULL) %>%
     count(class) %>%
     pull(n)
 
-  expect_true(all(exp_count == rec_count))
+  expect_true(all(exp_count * 2 == rec_count))
 
   expect_snapshot(rec1_p)
 
@@ -256,13 +194,13 @@ test_that("case_weights", {
     mutate(weights = importance_weights(rep(0:1, c(200, 200))))
 
   rec1_p <- recipe(~., data = circle_example_cw) %>%
-    step_downsample(class) %>%
+    step_upsample(class) %>%
     prep()
 
   exp_count <- circle_example_cw %>%
     count(class) %>%
     pull(n) %>%
-    min()
+    max()
 
   rec_count <- bake(rec1_p, new_data = NULL) %>%
     count(class) %>%
@@ -275,9 +213,9 @@ test_that("case_weights", {
 
 test_that("tunable", {
   rec <- recipe(~., data = mtcars) %>%
-    step_downsample(all_predictors())
-  rec_param <- tunable.step_downsample(rec$steps[[1]])
-  expect_equal(rec_param$name, c("under_ratio"))
+    step_upsample(all_predictors())
+  rec_param <- tunable.step_upsample(rec$steps[[1]])
+  expect_equal(rec_param$name, c("over_ratio"))
   expect_true(all(rec_param$source == "recipe"))
   expect_true(is.list(rec_param$call_info))
   expect_equal(nrow(rec_param), 1)
@@ -287,11 +225,71 @@ test_that("tunable", {
   )
 })
 
-test_that("tunable is setup to works with extract_parameter_set_dials works", {
+# Infrastructure ---------------------------------------------------------------
+
+test_that("bake method errors when needed non-standard role columns are missing", {
+  rec <- recipe(class ~ x + y, data = circle_example) %>%
+    step_upsample(class, skip = FALSE) %>%
+    add_role(class, new_role = "potato") %>%
+    update_role_requirements(role = "potato", bake = FALSE)
+
+  trained <- prep(rec, training = circle_example, verbose = FALSE)
+
+  expect_error(bake(trained, new_data = circle_example[, -3]),
+               class = "new_data_missing_column")
+})
+
+test_that("empty printing", {
+  rec <- recipe(mpg ~ ., mtcars)
+  rec <- step_upsample(rec)
+
+  expect_snapshot(rec)
+
+  rec <- prep(rec, mtcars)
+
+  expect_snapshot(rec)
+})
+
+test_that("empty selection prep/bake is a no-op", {
+  rec1 <- recipe(mpg ~ ., mtcars)
+  rec2 <- step_upsample(rec1)
+
+  rec1 <- prep(rec1, mtcars)
+  rec2 <- prep(rec2, mtcars)
+
+  baked1 <- bake(rec1, mtcars)
+  baked2 <- bake(rec2, mtcars)
+
+  expect_identical(baked1, baked1)
+})
+
+test_that("empty selection tidy method works", {
+  rec <- recipe(mpg ~ ., mtcars)
+  rec <- step_upsample(rec)
+
+  expect <- tibble(terms = character(), id = character())
+
+  expect_identical(tidy(rec, number = 1), expect)
+
+  rec <- prep(rec, mtcars)
+
+  expect_identical(tidy(rec, number = 1), expect)
+})
+
+test_that("printing", {
+  rec <- recipe(~., data = circle_example) %>%
+    step_upsample(class)
+
+  expect_snapshot(print(rec))
+  expect_snapshot(prep(rec))
+})
+
+test_that("tunable is setup to works with extract_parameter_set_dials", {
+  skip_if_not_installed("dials")
   rec <- recipe(~., data = mtcars) %>%
-    step_downsample(
+    step_upsample(
       all_predictors(),
-      under_ratio = hardhat::tune()
+      over_ratio = hardhat::tune()
     )
 
   params <- extract_parameter_set_dials(rec)

@@ -1,8 +1,8 @@
-#' Down-Sample a Data Set Based on a Factor Variable
+#' Up-Sample a Data Set Based on a Factor Variable
 #'
-#' `step_downsample` creates a *specification* of a recipe
-#'  step that will remove rows of a data set to make the occurrence
-#'  of levels in a specific factor level equal.
+#' `step_upsample()` creates a *specification* of a recipe step that will
+#' replicate rows of a data set to make the occurrence of levels in a specific
+#' factor level equal.
 #'
 #' @inheritParams recipes::step_center
 #' @param ... One or more selector functions to choose which
@@ -14,40 +14,35 @@
 #'  created.
 #' @param column A character string of the variable name that will
 #'  be populated (eventually) by the `...` selectors.
-#' @param under_ratio A numeric value for the ratio of the
-#'  minority-to-majority frequencies. The default value (1) means
-#'  that all other levels are sampled down to have the same
-#'  frequency as the least occurring level. A value of 2 would mean
-#'  that the majority levels will have (at most) (approximately)
-#'  twice as many rows than the minority level.
-#' @param ratio Deprecated argument; same as `under_ratio`
+#' @param over_ratio A numeric value for the ratio of the
+#'  majority-to-minority frequencies. The default value (1) means
+#'  that all other levels are sampled up to have the same
+#'  frequency as the most occurring level. A value of 0.5 would mean
+#'  that the minority levels will have (at most) (approximately)
+#'  half as many rows than the majority level.
+#' @param ratio Deprecated argument; same as `over_ratio`.
 #' @param target An integer that will be used to subsample. This
 #'  should not be set by the user and will be populated by `prep`.
-#' @param seed An integer that will be used as the seed when downsampling.
+#' @param seed An integer that will be used as the seed when upsampling.
 #' @return An updated version of `recipe` with the new step
 #'  added to the sequence of existing steps (if any). For the
 #'  `tidy` method, a tibble with columns `terms` which is
 #'  the variable used to sample.
 #' @details
-#' Down-sampling is intended to be performed on the _training_ set
+#' Up-sampling is intended to be performed on the _training_ set
 #'  alone. For this reason, the default is `skip = TRUE`.
 #'
 #' If there are missing values in the factor variable that is used
 #'  to define the sampling, missing data are selected at random in
 #'  the same way that the other factor levels are sampled. Missing
 #'  values are not used to determine the amount of data in the
-#'  minority level
+#'  majority level (see example below).
 #'
 #' For any data with factor levels occurring with the same
-#'  frequency as the minority level, all data will be retained.
+#'  frequency as the majority level, all data will be retained.
 #'
 #' All columns in the data are sampled and returned by [juice()]
 #'  and [bake()].
-#'
-#' Keep in mind that the location of down-sampling in the step
-#'  may have effects. For example, if centering and scaling,
-#'  it is not clear whether those operations should be conducted
-#'  _before_ or _after_ rows are removed.
 #'
 #' # Tidying
 #'
@@ -55,14 +50,14 @@
 #' (the selectors or variables selected) will be returned.
 #'
 #' ```{r, echo = FALSE, results="asis"}
-#' step <- "step_downsample"
+#' step <- "step_upsample"
 #' result <- knitr::knit_child("man/rmd/tunable-args.Rmd")
 #' cat(result)
 #' ```
 #'
 #' @template case-weights-unsupervised
 #'
-#' @family Steps for under-sampling
+#' @family Steps for over-sampling
 #'
 #' @export
 #' @examples
@@ -77,9 +72,9 @@
 #' orig
 #'
 #' up_rec <- recipe(class ~ ., data = hpc_data0) %>%
-#'   # Bring the majority levels down to about 1000 each
-#'   # 1000/259 is approx 3.862
-#'   step_downsample(class, under_ratio = 3.862) %>%
+#'   # Bring the minority levels up to about 1000 each
+#'   # 1000/2211 is approx 0.4523
+#'   step_upsample(class, over_ratio = 0.4523) %>%
 #'   prep()
 #'
 #' training <- up_rec %>%
@@ -103,33 +98,34 @@
 #'
 #' ggplot(circle_example, aes(x, y, color = class)) +
 #'   geom_point() +
-#'   labs(title = "Without downsample")
+#'   labs(title = "Without upsample")
 #'
 #' recipe(class ~ x + y, data = circle_example) %>%
-#'   step_downsample(class) %>%
+#'   step_upsample(class) %>%
 #'   prep() %>%
 #'   bake(new_data = NULL) %>%
 #'   ggplot(aes(x, y, color = class)) +
-#'   geom_point() +
-#'   labs(title = "With downsample")
-step_downsample <-
-  function(recipe, ..., under_ratio = 1, ratio = deprecated(), role = NA,
+#'   geom_jitter(width = 0.1, height = 0.1) +
+#'   labs(title = "With upsample (with jittering)")
+step_upsample <-
+  function(recipe, ..., over_ratio = 1, ratio = deprecated(), role = NA,
            trained = FALSE, column = NULL, target = NA, skip = TRUE,
-           seed = sample.int(10^5, 1), id = rand_id("downsample")) {
+           seed = sample.int(10^5, 1),
+           id = rand_id("upsample")) {
 
     if (lifecycle::is_present(ratio)) {
       lifecycle::deprecate_stop(
         "0.2.0",
         "step_downsample(ratio = )",
-        "step_downsample(under_ratio = )"
+        "step_downsample(over_ratio = )"
       )
     }
 
     add_step(
       recipe,
-      step_downsample_new(
+      step_upsample_new(
         terms = enquos(...),
-        under_ratio = under_ratio,
+        over_ratio = over_ratio,
         ratio = NULL,
         role = role,
         trained = trained,
@@ -143,13 +139,13 @@ step_downsample <-
     )
   }
 
-step_downsample_new <-
-  function(terms, under_ratio, ratio, role, trained, column, target, skip, seed,
+step_upsample_new <-
+  function(terms, over_ratio, ratio, role, trained, column, target, skip, seed,
            id, case_weights) {
     step(
-      subclass = "downsample",
+      subclass = "upsample",
       terms = terms,
-      under_ratio = under_ratio,
+      over_ratio = over_ratio,
       ratio = ratio,
       role = role,
       trained = trained,
@@ -158,13 +154,13 @@ step_downsample_new <-
       skip = skip,
       id = id,
       seed = seed,
-      id = id,
       case_weights = case_weights
     )
   }
 
+
 #' @export
-prep.step_downsample <- function(x, training, info = NULL, ...) {
+prep.step_upsample <- function(x, training, info = NULL, ...) {
   col_name <- recipes_eval_select(x$terms, training, info)
 
   wts <- recipes::get_case_weights(info, training)
@@ -178,80 +174,80 @@ prep.step_downsample <- function(x, training, info = NULL, ...) {
   }
 
   if (length(col_name) == 0) {
-    minority <- 1
+    majority <- 0
   } else {
     check_column_factor(training, col_name)
     obs_freq <- weighted_table(training[[col_name]], as.integer(wts))
-    minority <- min(obs_freq)
+    majority <- max(obs_freq)
   }
 
   check_na(select(training, all_of(col_name)))
 
-  step_downsample_new(
+  step_upsample_new(
     terms = x$terms,
-    under_ratio = x$under_ratio,
     ratio = x$ratio,
+    over_ratio = x$over_ratio,
     role = x$role,
     trained = TRUE,
     column = col_name,
-    target = floor(minority * x$under_ratio),
+    target = floor(majority * x$over_ratio),
     skip = x$skip,
-    seed = x$seed,
     id = x$id,
+    seed = x$seed,
     case_weights = were_weights_used
   )
 }
 
 
-subsamp <- function(x, wts, num) {
+supsamp <- function(x, wts, num) {
   n <- nrow(x)
   if (nrow(x) == num) {
     out <- x
   } else {
-    # downsampling is done without replacement
-    out <- x[sample(seq_len(n), min(num, n), prob = wts), ]
+    # upsampling is done with replacement
+    out <- x[sample(seq_len(n), max(num, n), replace = TRUE, prob = wts), ]
   }
   out
 }
 
 #' @export
-bake.step_downsample <- function(object, new_data, ...) {
-  check_new_data(names(object$column), object, new_data)
+bake.step_upsample <- function(object, new_data, ...) {
+  col_names <- names(object$column)
+  check_new_data(col_names, object, new_data)
 
-  if (length(object$column) == 0L) {
+  if (length(col_names) == 0L) {
     # Empty selection
     return(new_data)
   }
 
   if (isTRUE(object$case_weights)) {
     wts_col <- purrr::map_lgl(new_data, hardhat::is_case_weights)
-    wts <- getElement(new_data, names(which(wts_col)))
+    wts <- new_data[[names(which(wts_col))]]
     wts <- as.integer(wts)
   } else {
     wts <- rep(1, nrow(new_data))
   }
 
-  if (any(is.na(new_data[[object$column]]))) {
-    missing <- new_data[is.na(new_data[[object$column]]), ]
+  if (any(is.na(new_data[[col_names]]))) {
+    missing <- new_data[is.na(new_data[[col_names]]), ]
   } else {
     missing <- NULL
   }
-  split_data <- split(new_data, new_data[[object$column]])
-  split_wts <- split(wts, new_data[[object$column]])
+  split_data <- split(new_data, new_data[[col_names]])
+  split_wts <- split(wts, new_data[[col_names]])
 
-
-  # Downsample with seed for reproducibility
+  # Upsample with seed for reproducibility
   with_seed(
     seed = object$seed,
     code = {
       new_data <- purrr::map2_dfr(
         split_data,
         split_wts,
-        subsamp,
+        supsamp,
         num = object$target
       )
       if (!is.null(missing)) {
-        new_data <- bind_rows(new_data, subsamp(missing, object$target))
+        new_data <- bind_rows(new_data, supsamp(missing, object$target))
       }
     }
   )
@@ -260,18 +256,18 @@ bake.step_downsample <- function(object, new_data, ...) {
 }
 
 #' @export
-print.step_downsample <-
+print.step_upsample <-
   function(x, width = max(20, options()$width - 26), ...) {
-    title <- "Down-sampling based on "
+    title <- "Up-sampling based on "
     print_step(x$column, x$terms, x$trained, title, width,
                case_weights = x$case_weights)
     invisible(x)
   }
 
 #' @rdname tidy.recipe
-#' @param x A `step_downsample` object.
+#' @param x A `step_upsample` object.
 #' @export
-tidy.step_downsample <- function(x, ...) {
+tidy.step_upsample <- function(x, ...) {
   if (is_trained(x)) {
     res <- tibble(terms = unname(x$column))
   } else {
@@ -284,20 +280,20 @@ tidy.step_downsample <- function(x, ...) {
 
 #' @export
 #' @rdname tunable_themis
-tunable.step_downsample <- function(x, ...) {
+tunable.step_upsample <- function(x, ...) {
   tibble::tibble(
-    name = "under_ratio",
+    name = c("over_ratio"),
     call_info = list(
-      list(pkg = "dials", fun = "under_ratio")
+      list(pkg = "dials", fun = "over_ratio")
     ),
     source = "recipe",
-    component = "step_downsample",
+    component = "step_upsample",
     component_id = x$id
   )
 }
 
 #' @rdname required_pkgs.step
 #' @export
-required_pkgs.step_downsample <- function(x, ...) {
+required_pkgs.step_upsample <- function(x, ...) {
   c("themis")
 }

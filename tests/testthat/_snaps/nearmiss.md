@@ -1,71 +1,36 @@
-# printing
-
-    Code
-      print(rec)
-    Message <cliMessage>
-      
-      -- Recipe ----------------------------------------------------------------------
-      
-      -- Inputs 
-      Number of variables by role
-      outcome:   1
-      predictor: 2
-      
-      -- Operations 
-      * BorderlineSMOTE based on: class
-
----
-
-    Code
-      prep(rec)
-    Message <cliMessage>
-      
-      -- Recipe ----------------------------------------------------------------------
-      
-      -- Inputs 
-      Number of variables by role
-      outcome:   1
-      predictor: 2
-      
-      -- Training information 
-      Training data contained 400 data points and no incomplete rows.
-      
-      -- Operations 
-      * BorderlineSMOTE based on: class | Trained
-
 # bad data
 
     Code
-      rec %>% step_bsmote(x) %>% prep()
+      rec %>% step_nearmiss(x) %>% prep()
     Error <recipes_error_step>
-      Error in `step_bsmote()`:
+      Error in `step_nearmiss()`:
       Caused by error in `prep()`:
       ! `x` should be a factor variable.
 
 ---
 
     Code
-      rec %>% step_bsmote(class, id) %>% prep()
+      rec %>% step_nearmiss(class, id) %>% prep()
     Error <recipes_error_step>
-      Error in `step_bsmote()`:
+      Error in `step_nearmiss()`:
       Caused by error in `prep()`:
       ! The selector should select at most a single variable
 
 # errors if character are present
 
     Code
-      recipe(~., data = df_char) %>% step_bsmote(x) %>% prep()
+      recipe(~., data = df_char) %>% step_nearmiss(x) %>% prep()
     Error <recipes_error_step>
-      Error in `step_bsmote()`:
+      Error in `step_nearmiss()`:
       Caused by error in `prep()`:
       ! All columns selected for the step should be double, or integer.
 
 # NA in response
 
     Code
-      recipe(Job ~ Age, data = credit_data) %>% step_bsmote(Job) %>% prep()
+      recipe(Job ~ Age, data = credit_data) %>% step_nearmiss(Job) %>% prep()
     Error <recipes_error_step>
-      Error in `step_bsmote()`:
+      Error in `step_nearmiss()`:
       Caused by error in `prep()`:
       ! Cannot have any missing values. NAs found ind: Job.
 
@@ -83,7 +48,7 @@
       predictor: 10
       
       -- Operations 
-      * BorderlineSMOTE based on: <none>
+      * NEARMISS-1 based on: <none>
 
 ---
 
@@ -102,5 +67,40 @@
       Training data contained 32 data points and no incomplete rows.
       
       -- Operations 
-      * BorderlineSMOTE based on: <none> | Trained
+      * NEARMISS-1 based on: <none> | Trained
+
+# printing
+
+    Code
+      print(rec)
+    Message <cliMessage>
+      
+      -- Recipe ----------------------------------------------------------------------
+      
+      -- Inputs 
+      Number of variables by role
+      outcome:   1
+      predictor: 2
+      
+      -- Operations 
+      * NEARMISS-1 based on: class
+
+---
+
+    Code
+      prep(rec)
+    Message <cliMessage>
+      
+      -- Recipe ----------------------------------------------------------------------
+      
+      -- Inputs 
+      Number of variables by role
+      outcome:   1
+      predictor: 2
+      
+      -- Training information 
+      Training data contained 400 data points and no incomplete rows.
+      
+      -- Operations 
+      * NEARMISS-1 based on: class | Trained
 

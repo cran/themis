@@ -61,25 +61,6 @@ test_that("basic usage", {
   expect_warning(prep(rec1), NA)
 })
 
-test_that("bake method errors when needed non-standard role columns are missing", {
-  rec <- recipe(class ~ x + y, data = circle_example) %>%
-    step_rose(class, skip = FALSE) %>%
-    add_role(class, new_role = "potato") %>%
-    update_role_requirements(role = "potato", bake = FALSE)
-
-  trained <- prep(rec, training = circle_example, verbose = FALSE)
-
-  expect_error(bake(trained, new_data = circle_example[, -3]),
-               class = "new_data_missing_column")
-})
-
-test_that("printing", {
-  rec <- recipe(class ~ x + y, data = circle_example) %>%
-    step_rose(class)
-  expect_snapshot(print(rec))
-  expect_snapshot(prep(rec))
-})
-
 test_that("bad data", {
   rec <- recipe(~., data = circle_example)
   # numeric check
@@ -223,6 +204,44 @@ test_that("id variables don't turn predictors to factors", {
   expect_equal(is.double(rec_id$y), TRUE)
 })
 
+test_that("tunable", {
+  rec <- recipe(~., data = mtcars) %>%
+    step_rose(all_predictors())
+  rec_param <- tunable.step_rose(rec$steps[[1]])
+  expect_equal(rec_param$name, c("over_ratio"))
+  expect_true(all(rec_param$source == "recipe"))
+  expect_true(is.list(rec_param$call_info))
+  expect_equal(nrow(rec_param), 1)
+  expect_equal(
+    names(rec_param),
+    c("name", "call_info", "source", "component", "component_id")
+  )
+})
+
+# Infrastructure ---------------------------------------------------------------
+
+test_that("bake method errors when needed non-standard role columns are missing", {
+  rec <- recipe(class ~ x + y, data = circle_example) %>%
+    step_rose(class, skip = FALSE) %>%
+    add_role(class, new_role = "potato") %>%
+    update_role_requirements(role = "potato", bake = FALSE)
+
+  trained <- prep(rec, training = circle_example, verbose = FALSE)
+
+  expect_error(bake(trained, new_data = circle_example[, -3]),
+               class = "new_data_missing_column")
+})
+
+test_that("empty printing", {
+  rec <- recipe(mpg ~ ., mtcars)
+  rec <- step_rose(rec)
+
+  expect_snapshot(rec)
+
+  rec <- prep(rec, mtcars)
+
+  expect_snapshot(rec)
+})
 
 test_that("empty selection prep/bake is a no-op", {
   rec1 <- recipe(mpg ~ ., mtcars)
@@ -241,45 +260,25 @@ test_that("empty selection tidy method works", {
   rec <- recipe(mpg ~ ., mtcars)
   rec <- step_rose(rec)
 
-  expect_identical(
-    tidy(rec, number = 1),
-    tibble(terms = character(), id = character())
-  )
+  expect <- tibble(terms = character(), id = character())
+
+  expect_identical(tidy(rec, number = 1), expect)
 
   rec <- prep(rec, mtcars)
 
-  expect_identical(
-    tidy(rec, number = 1),
-    tibble(terms = character(), id = character())
-  )
+  expect_identical(tidy(rec, number = 1), expect)
 })
 
-test_that("empty printing", {
-  rec <- recipe(mpg ~ ., mtcars)
-  rec <- step_rose(rec)
+test_that("printing", {
+  rec <- recipe(class ~ x + y, data = circle_example) %>%
+    step_rose(class)
 
-  expect_snapshot(rec)
-
-  rec <- prep(rec, mtcars)
-
-  expect_snapshot(rec)
+  expect_snapshot(print(rec))
+  expect_snapshot(prep(rec))
 })
 
-test_that("tunable", {
-  rec <- recipe(~., data = mtcars) %>%
-    step_rose(all_predictors())
-  rec_param <- tunable.step_rose(rec$steps[[1]])
-  expect_equal(rec_param$name, c("over_ratio"))
-  expect_true(all(rec_param$source == "recipe"))
-  expect_true(is.list(rec_param$call_info))
-  expect_equal(nrow(rec_param), 1)
-  expect_equal(
-    names(rec_param),
-    c("name", "call_info", "source", "component", "component_id")
-  )
-})
-
-test_that("tunable is setup to works with extract_parameter_set_dials works", {
+test_that("tunable is setup to works with extract_parameter_set_dials", {
+  skip_if_not_installed("dials")
   rec <- recipe(~., data = mtcars) %>%
     step_rose(
       all_predictors(),
