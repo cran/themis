@@ -31,23 +31,10 @@
 #'
 #' res <- adasyn(circle_numeric, var = "class", over_ratio = 0.8)
 adasyn <- function(df, var, k = 5, over_ratio = 1) {
-  if (length(var) != 1) {
-    rlang::abort("Please select a single factor variable for `var`.")
-  }
-
-  var <- rlang::arg_match(var, colnames(df))
-
-  if (!(is.factor(df[[var]]) | is.character(df[[var]]))) {
-    rlang::abort(glue("`{var}` should be a factor or character variable."))
-  }
-
-  if (length(k) != 1) {
-    rlang::abort("`k` must be length 1.")
-  }
-
-  if (k < 1) {
-    rlang::abort("`k` must be non-negative.")
-  }
+  check_data_frame(df)
+  check_var(var, df)
+  check_number_whole(k, min = 1)
+  check_number_decimal(over_ratio)
 
   predictors <- setdiff(colnames(df), var)
 
@@ -83,12 +70,7 @@ adasyn_impl <- function(df, var, k = 5, over_ratio = 1, call = caller_env()) {
     minority <- data_mat[!min_class_in, , drop = FALSE]
 
     if (nrow(minority) <= k) {
-      rlang::abort(
-        glue(
-        "Not enough observations of '{min_names[i]}' to perform ADASYN."
-        ),
-        call = call
-      )
+      cli::cli_abort("Not enough observations of {.val {min_names[i]}} to perform ADASYN.", call = call)
     }
 
     tmp_df <- as.data.frame(

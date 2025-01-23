@@ -2,16 +2,16 @@
 
     Code
       recipe(Status ~ Age, data = credit_data0) %>% step_adasyn(Status) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_adasyn()`:
       Caused by error in `bake()`:
-      ! Not enough observations of 'dummy' to perform ADASYN.
+      ! Not enough observations of "dummy" to perform ADASYN.
 
 # bad data
 
     Code
       rec %>% step_adasyn(x) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_adasyn()`:
       Caused by error in `prep()`:
       ! `x` should be a factor variable.
@@ -20,34 +20,69 @@
 
     Code
       rec %>% step_adasyn(class, id) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_adasyn()`:
       Caused by error in `prep()`:
-      ! The selector should select at most a single variable
+      ! The selector should select at most a single variable.
 
 # errors if character are present
 
     Code
       recipe(~., data = df_char) %>% step_adasyn(x) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_adasyn()`:
       Caused by error in `prep()`:
-      ! All columns selected for the step should be double, or integer.
+      x All columns selected for the step should be double or integer.
+      * 1 factor variable found: `y`
 
 # NA in response
 
     Code
       recipe(Job ~ Age, data = credit_data) %>% step_adasyn(Job) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_adasyn()`:
       Caused by error in `prep()`:
-      ! Cannot have any missing values. NAs found ind: Job.
+      ! Cannot have any missing values. NAs found in Job.
+
+# bad args
+
+    Code
+      recipe(~., data = mtcars) %>% step_adasyn(over_ratio = "yes") %>% prep()
+    Condition
+      Error in `step_adasyn()`:
+      Caused by error in `prep()`:
+      ! `over_ratio` must be a number, not the string "yes".
+
+---
+
+    Code
+      recipe(~., data = mtcars) %>% step_adasyn(neighbors = TRUE) %>% prep()
+    Condition
+      Error in `step_adasyn()`:
+      Caused by error in `prep()`:
+      ! `neighbors` must be a whole number, not `TRUE`.
+
+---
+
+    Code
+      recipe(~., data = mtcars) %>% step_adasyn(seed = TRUE)
+    Condition
+      Error in `step_adasyn()`:
+      ! `seed` must be a whole number, not `TRUE`.
+
+# bake method errors when needed non-standard role columns are missing
+
+    Code
+      bake(trained, new_data = circle_example[, -3])
+    Condition
+      Error in `step_adasyn()`:
+      ! The following required column is missing from `new_data`: class.
 
 # empty printing
 
     Code
       rec
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -63,7 +98,7 @@
 
     Code
       rec
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -82,7 +117,7 @@
 
     Code
       print(rec)
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -98,7 +133,7 @@
 
     Code
       prep(rec)
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       

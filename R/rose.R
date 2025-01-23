@@ -7,7 +7,7 @@
 #' @inheritParams recipes::step_center
 #' @inheritParams step_upsample
 #' @param ... One or more selector functions to choose which
-#'  variable is used to sample the data. See [selections()]
+#'  variable is used to sample the data. See [recipes::selections]
 #'  for more details. The selection should result in _single
 #'  factor variable_. For the `tidy` method, these are not
 #'  currently used.
@@ -41,8 +41,8 @@
 #' could lead to blur the boundaries between the regions of the feature space
 #' associated with each class.
 #'
-#' All columns in the data are sampled and returned by [juice()]
-#'  and [bake()].
+#' All columns in the data are sampled and returned by [recipes::juice()]
+#'  and [recipes::bake()].
 #'
 #' When used in modeling, users should strongly consider using the
 #'  option `skip = TRUE` so that the extra sampling is _not_
@@ -50,8 +50,13 @@
 #'
 #' # Tidying
 #'
-#' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
-#' (the selectors or variables selected) will be returned.
+#' When you [`tidy()`][recipes::tidy.recipe()] this step, a tibble is retruned with
+#'  columns `terms` and `id`:
+#'
+#' \describe{
+#'   \item{terms}{character, the selectors or variables selected}
+#'   \item{id}{character, id of this step}
+#' }
 #'
 #' ```{r, echo = FALSE, results="asis"}
 #' step <- "step_rose"
@@ -70,7 +75,7 @@
 #' @family Steps for over-sampling
 #'
 #' @export
-#' @examples
+#' @examplesIf rlang::is_installed("modeldata")
 #' library(recipes)
 #' library(modeldata)
 #' data(hpc_data)
@@ -119,6 +124,11 @@ step_rose <-
            column = NULL, over_ratio = 1, minority_prop = 0.5,
            minority_smoothness = 1, majority_smoothness = 1, skip = TRUE,
            seed = sample.int(10^5, 1), id = rand_id("rose")) {
+    check_number_decimal(minority_prop, min = 0)
+    check_number_decimal(minority_smoothness, min = 0)
+    check_number_decimal(majority_smoothness, min = 0)
+    check_number_whole(seed)
+    
     add_step(
       recipe,
       step_rose_new(
@@ -162,13 +172,12 @@ step_rose_new <-
 #' @export
 prep.step_rose <- function(x, training, info = NULL, ...) {
   col_name <- recipes_eval_select(x$terms, training, info)
-  if (length(col_name) > 1) {
-    rlang::abort("The selector should select at most a single variable")
-  }
-  if (length(col_name) == 1) {
-    check_column_factor(training, col_name)
-    check_2_levels_only(training, col_name)
-  }
+  
+  check_number_decimal(x$over_ratio, arg = "over_ratio", min = 0)
+
+  check_1_selected(col_name)
+  check_column_factor(training, col_name)
+  check_2_levels_only(training, col_name)
 
   predictors <- setdiff(get_from_info(info, "predictor"), col_name)
   check_na(select(training, all_of(col_name)))
@@ -245,8 +254,8 @@ print.step_rose <-
     invisible(x)
   }
 
-#' @rdname tidy.recipe
-#' @param x A `step_rose` object.
+#' @rdname step_rose
+#' @usage NULL
 #' @export
 tidy.step_rose <- function(x, ...) {
   if (is_trained(x)) {

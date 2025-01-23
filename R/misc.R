@@ -8,18 +8,25 @@ check_na <- function(data, step, call = caller_env()) {
   na_cols <- vapply(data, function(x) any(is.na(x)), FUN.VALUE = logical(1))
   if (any(na_cols)) {
     cols <- paste(names(na_cols)[na_cols], collapse = ", ")
-    rlang::abort(
-      glue(
-        "Cannot have any missing values. NAs found ind: {cols}."
-      ),
+    cli::cli_abort(
+      "Cannot have any missing values. NAs found in {cols}.",
       call = call
     )
   }
 }
 
 check_2_levels_only <- function(data, col_name, call = caller_env()) {
-  if (length(levels(data[[col_name]])) != 2) {
-    rlang::abort(glue("`{col_name}` must only have 2 levels."), call = call)
+  if (length(col_name) == 1 && length(levels(data[[col_name]])) != 2) {
+    cli::cli_abort("The {.code {col_name}} must only have 2 levels.", call = call)
+  }
+}
+
+check_1_selected <- function(x, call = caller_env()) {
+  if (length(x) > 1) {
+    cli::cli_abort(
+      "The selector should select at most a single variable.",
+      call = call
+    )
   }
 }
 
@@ -28,15 +35,36 @@ check_numeric <- function(dat) {
   label <- "numeric"
 
   if (!all(all_good)) {
-    rlang::abort("All columns for this function should be numeric.")
+    cli::cli_abort("All columns for this function should be numeric.")
   }
   invisible(all_good)
 }
 
 check_column_factor <- function(data, column, call = caller_env()) {
-  if (!is.factor(data[[column]])) {
-    rlang::abort(glue("`{column}` should be a factor variable."), call = call)
+  if (length(column) == 1 && !is.factor(data[[column]])) {
+    cli::cli_abort("{.code {column}} should be a factor variable.", call = call)
   }
+}
+
+check_var <- function(var, df, call = caller_env()) {
+  if (length(var) != 1) {
+    cli::cli_abort(
+      "Please select a single factor variable for {.arg var}.",
+      call = call
+    )
+  }
+
+  var <- rlang::arg_match(var, names(df), error_call = call)
+  column <- df[[var]]
+
+  if (!(is.factor(column) || is.character(column))) {
+    cli::cli_abort(
+      "{.var {var}} should refer to a factor or character column, 
+      not {.obj_type_friendly {column}}.",
+      call = call
+    )
+  }
+
 }
 
 na_splice <- function(new_data, synthetic_data, object) {

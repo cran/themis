@@ -1,8 +1,3 @@
-library(testthat)
-library(recipes)
-library(dplyr)
-library(modeldata)
-
 test_that("basic usage", {
   rec1 <- recipe(class ~ x + y, data = circle_example) %>%
     step_tomek(class)
@@ -14,19 +9,21 @@ test_that("basic usage", {
 
   expect_equal(sort(te_xtab), sort(og_xtab))
 
-  expect_warning(prep(rec1), NA)
+  expect_no_warning(prep(rec1))
 })
 
 test_that("bad data", {
   rec <- recipe(~., data = circle_example)
   # numeric check
-  expect_snapshot(error = TRUE,
+  expect_snapshot(
+    error = TRUE,
     rec %>%
       step_smote(x) %>%
       prep()
   )
   # Multiple variable check
-  expect_snapshot(error = TRUE,
+  expect_snapshot(
+    error = TRUE,
     rec %>%
       step_smote(class, id) %>%
       prep()
@@ -40,7 +37,8 @@ test_that("errors if character are present", {
     stringsAsFactors = FALSE
   )
 
-  expect_snapshot(error = TRUE,
+  expect_snapshot(
+    error = TRUE,
     recipe(~., data = df_char) %>%
       step_tomek(x) %>%
       prep()
@@ -48,11 +46,14 @@ test_that("errors if character are present", {
 })
 
 test_that("NA in response", {
-  data(credit_data)
+  skip_if_not_installed("modeldata")
+  
+  data("credit_data", package = "modeldata")
   credit_data0 <- credit_data
   credit_data0[1, 1] <- NA
 
-  expect_snapshot(error = TRUE,
+  expect_snapshot(
+    error = TRUE,
     recipe(Status ~ Age, data = credit_data0) %>%
       step_tomek(Status) %>%
       prep()
@@ -123,7 +124,6 @@ test_that("id variables are ignored", {
   expect_equal(ncol(bake(rec_id, new_data = NULL)), 4)
 })
 
-
 test_that("id variables don't turn predictors to factors", {
   # https://github.com/tidymodels/themis/issues/56
   rec_id <- recipe(class ~ ., data = circle_example) %>%
@@ -136,6 +136,14 @@ test_that("id variables don't turn predictors to factors", {
   expect_equal(is.double(rec_id$y), TRUE)
 })
 
+test_that("bad args", {
+  expect_snapshot(
+    error = TRUE,
+    recipe(~., data = mtcars) %>%
+      step_tomek(seed = TRUE)
+  )
+})
+
 # Infrastructure ---------------------------------------------------------------
 
 test_that("bake method errors when needed non-standard role columns are missing", {
@@ -146,8 +154,10 @@ test_that("bake method errors when needed non-standard role columns are missing"
 
   trained <- prep(rec, training = circle_example, verbose = FALSE)
 
-  expect_error(bake(trained, new_data = circle_example[, -3]),
-               class = "new_data_missing_column")
+  expect_snapshot(
+    error = TRUE,
+    bake(trained, new_data = circle_example[, -3])
+  )
 })
 
 test_that("empty printing", {

@@ -17,37 +17,49 @@ test_that("order doesn't matter", {
 test_that("tomek() interfaces correctly", {
   circle_example_num <- circle_example[, 1:3]
 
-  expect_error(tomek(circle_example_num, var = "class"), NA)
+  expect_no_error(tomek(circle_example_num, var = "class"))
 
-  expect_snapshot(error = TRUE,
-                  tomek(circle_example_num, var = "Class")
+  expect_snapshot(
+    error = TRUE,
+    tomek(circle_example_num, var = "Class")
   )
 
-  expect_snapshot(error = TRUE,
-                  tomek(circle_example_num, var = c("class", "x"))
+  expect_snapshot(
+    error = TRUE,
+    tomek(circle_example_num, var = c("class", "x"))
   )
 
-  expect_snapshot(error = TRUE,
-                  tomek(circle_example_num, var = "x")
+  expect_snapshot(
+    error = TRUE,
+    tomek(circle_example_num, var = "x")
   )
 
   circle_example0 <- circle_example_num
   circle_example0[1, 1] <- NA
 
-  expect_snapshot(error = TRUE,
-                  tomek(circle_example0, var = "class")
+  expect_snapshot(
+    error = TRUE,
+    tomek(circle_example0, var = "class")
   )
 })
 
 test_that("ordering of columns shouldn't matter", {
+  skip_if_not_installed("modeldata")
+  
   data("credit_data", package = "modeldata")
 
   credit_data0 <- credit_data %>%
     filter(!is.na(Job)) %>%
     select(Job, Time, Age, Expenses)
 
-  expect_error(
-    tomek(credit_data0, "Job"),
-    NA
+  expect_no_error(
+    tomek(credit_data0, "Job")
+  )
+})
+
+test_that("bad args", {
+  expect_snapshot(
+    error = TRUE,
+    bsmote(matrix())
   )
 })

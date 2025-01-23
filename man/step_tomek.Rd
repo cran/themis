@@ -2,6 +2,7 @@
 % Please edit documentation in R/tomek.R
 \name{step_tomek}
 \alias{step_tomek}
+\alias{tidy.step_tomek}
 \title{Remove Tomek’s Links}
 \usage{
 step_tomek(
@@ -20,7 +21,7 @@ step_tomek(
 sequence of operations for this recipe.}
 
 \item{...}{One or more selector functions to choose which
-variable is used to sample the data. See \code{\link[=selections]{selections()}}
+variable is used to sample the data. See \link[recipes:selections]{recipes::selections}
 for more details. The selection should result in \emph{single
 factor variable}. For the \code{tidy} method, these are not
 currently used.}
@@ -63,16 +64,21 @@ other variables must be numerics with no missing data.
 A tomek link is defined as a pair of points from different classes and are
 each others nearest neighbors.
 
-All columns in the data are sampled and returned by \code{\link[=juice]{juice()}}
-and \code{\link[=bake]{bake()}}.
+All columns in the data are sampled and returned by \code{\link[recipes:juice]{recipes::juice()}}
+and \code{\link[recipes:bake]{recipes::bake()}}.
 
 When used in modeling, users should strongly consider using the
 option \code{skip = TRUE} so that the extra sampling is \emph{not}
 conducted outside of the training set.
 }
 \section{Tidying}{
-When you \code{\link[=tidy.recipe]{tidy()}} this step, a tibble with columns \code{terms}
-(the selectors or variables selected) will be returned.
+When you \code{\link[recipes:tidy.recipe]{tidy()}} this step, a tibble is retruned with
+columns \code{terms} and \code{id}:
+
+\describe{
+\item{terms}{character, the selectors or variables selected}
+\item{id}{character, id of this step}
+}
 }
 
 \section{Case weights}{
@@ -82,6 +88,7 @@ The underlying operation does not allow for case weights.
 }
 
 \examples{
+\dontshow{if (rlang::is_installed("modeldata")) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
 library(recipes)
 library(modeldata)
 data(hpc_data)
@@ -128,6 +135,7 @@ recipe(class ~ x + y, data = circle_example) \%>\%
   labs(title = "With Tomek") +
   xlim(c(1, 15)) +
   ylim(c(1, 15))
+\dontshow{\}) # examplesIf}
 }
 \references{
 Tomek. Two modifications of cnn. IEEE Trans. Syst. Man Cybern.,

@@ -2,7 +2,7 @@
 
     Code
       rec %>% step_rose(x) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_rose()`:
       Caused by error in `prep()`:
       ! `x` should be a factor variable.
@@ -11,34 +11,83 @@
 
     Code
       rec %>% step_rose(class, id) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_rose()`:
       Caused by error in `prep()`:
-      ! The selector should select at most a single variable
+      ! The selector should select at most a single variable.
 
 # NA in response
 
     Code
       recipe(Status ~ Age, data = credit_data0) %>% step_rose(Status) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_rose()`:
       Caused by error in `prep()`:
-      ! Cannot have any missing values. NAs found ind: Status.
+      ! Cannot have any missing values. NAs found in Status.
 
 # only except 2 classes
 
     Code
       recipe(~., data = df_char) %>% step_rose(x) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_rose()`:
       Caused by error in `prep()`:
-      ! `x` must only have 2 levels.
+      ! The `x` must only have 2 levels.
+
+# bad args
+
+    Code
+      recipe(~., data = mtcars) %>% step_rose(over_ratio = "yes") %>% prep()
+    Condition
+      Error in `step_rose()`:
+      Caused by error in `prep()`:
+      ! `over_ratio` must be a number, not the string "yes".
+
+---
+
+    Code
+      recipe(~., data = mtcars) %>% step_rose(minority_prop = TRUE)
+    Condition
+      Error in `step_rose()`:
+      ! `minority_prop` must be a number, not `TRUE`.
+
+---
+
+    Code
+      recipe(~., data = mtcars) %>% step_rose(minority_smoothness = TRUE)
+    Condition
+      Error in `step_rose()`:
+      ! `minority_smoothness` must be a number, not `TRUE`.
+
+---
+
+    Code
+      recipe(~., data = mtcars) %>% step_rose(majority_smoothness = TRUE)
+    Condition
+      Error in `step_rose()`:
+      ! `majority_smoothness` must be a number, not `TRUE`.
+
+---
+
+    Code
+      recipe(~., data = mtcars) %>% step_rose(seed = TRUE)
+    Condition
+      Error in `step_rose()`:
+      ! `seed` must be a whole number, not `TRUE`.
+
+# bake method errors when needed non-standard role columns are missing
+
+    Code
+      bake(trained, new_data = circle_example[, -3])
+    Condition
+      Error in `step_rose()`:
+      ! The following required column is missing from `new_data`: class.
 
 # empty printing
 
     Code
       rec
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -54,7 +103,7 @@
 
     Code
       rec
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -73,7 +122,7 @@
 
     Code
       print(rec)
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -89,7 +138,7 @@
 
     Code
       prep(rec)
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       

@@ -2,7 +2,7 @@
 
     Code
       rec %>% step_smote(x) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_smote()`:
       Caused by error in `prep()`:
       ! `x` should be a factor variable.
@@ -11,34 +11,51 @@
 
     Code
       rec %>% step_smote(class, id) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_smote()`:
       Caused by error in `prep()`:
-      ! The selector should select at most a single variable
+      ! The selector should select at most a single variable.
 
 # errors if character are present
 
     Code
       recipe(~., data = df_char) %>% step_tomek(x) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_tomek()`:
       Caused by error in `prep()`:
-      ! All columns selected for the step should be double, or integer.
+      x All columns selected for the step should be double or integer.
+      * 1 factor variable found: `y`
 
 # NA in response
 
     Code
       recipe(Status ~ Age, data = credit_data0) %>% step_tomek(Status) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_tomek()`:
       Caused by error in `prep()`:
-      ! Cannot have any missing values. NAs found ind: Status.
+      ! Cannot have any missing values. NAs found in Status.
+
+# bad args
+
+    Code
+      recipe(~., data = mtcars) %>% step_tomek(seed = TRUE)
+    Condition
+      Error in `step_tomek()`:
+      ! `seed` must be a whole number, not `TRUE`.
+
+# bake method errors when needed non-standard role columns are missing
+
+    Code
+      bake(trained, new_data = circle_example[, -3])
+    Condition
+      Error in `step_tomek()`:
+      ! The following required column is missing from `new_data`: class.
 
 # empty printing
 
     Code
       rec
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -54,7 +71,7 @@
 
     Code
       rec
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -73,7 +90,7 @@
 
     Code
       print(rec)
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -89,7 +106,7 @@
 
     Code
       prep(rec)
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       

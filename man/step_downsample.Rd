@@ -2,6 +2,7 @@
 % Please edit documentation in R/downsample.R
 \name{step_downsample}
 \alias{step_downsample}
+\alias{tidy.step_downsample}
 \title{Down-Sample a Data Set Based on a Factor Variable}
 \usage{
 step_downsample(
@@ -23,13 +24,13 @@ step_downsample(
 sequence of operations for this recipe.}
 
 \item{...}{One or more selector functions to choose which
-variable is used to sample the data. See \code{\link[=selections]{selections()}}
+variable is used to sample the data. See \link[recipes:selections]{recipes::selections}
 for more details. The selection should result in \emph{single
 factor variable}. For the \code{tidy} method, these are not
 currently used.}
 
 \item{under_ratio}{A numeric value for the ratio of the
-minority-to-majority frequencies. The default value (1) means
+majority-to-minority frequencies. The default value (1) means
 that all other levels are sampled down to have the same
 frequency as the least occurring level. A value of 2 would mean
 that the majority levels will have (at most) (approximately)
@@ -84,8 +85,8 @@ minority level
 For any data with factor levels occurring with the same
 frequency as the minority level, all data will be retained.
 
-All columns in the data are sampled and returned by \code{\link[=juice]{juice()}}
-and \code{\link[=bake]{bake()}}.
+All columns in the data are sampled and returned by \code{\link[recipes:juice]{recipes::juice()}}
+and \code{\link[recipes:bake]{recipes::bake()}}.
 
 Keep in mind that the location of down-sampling in the step
 may have effects. For example, if centering and scaling,
@@ -93,8 +94,13 @@ it is not clear whether those operations should be conducted
 \emph{before} or \emph{after} rows are removed.
 }
 \section{Tidying}{
-When you \code{\link[=tidy.recipe]{tidy()}} this step, a tibble with columns \code{terms}
-(the selectors or variables selected) will be returned.
+When you \code{\link[recipes:tidy.recipe]{tidy()}} this step, a tibble is retruned with
+columns \code{terms} and \code{id}:
+
+\describe{
+\item{terms}{character, the selectors or variables selected}
+\item{id}{character, id of this step}
+}
 }
 
 \section{Tuning Parameters}{
@@ -113,6 +119,7 @@ To use them, see the documentation in \link[recipes:case_weights]{recipes::case_
 }
 
 \examples{
+\dontshow{if (rlang::is_installed("modeldata")) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
 library(recipes)
 library(modeldata)
 data(hpc_data)
@@ -159,6 +166,7 @@ recipe(class ~ x + y, data = circle_example) \%>\%
   ggplot(aes(x, y, color = class)) +
   geom_point() +
   labs(title = "With downsample")
+\dontshow{\}) # examplesIf}
 }
 \seealso{
 Other Steps for under-sampling: 

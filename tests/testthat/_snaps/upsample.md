@@ -2,15 +2,16 @@
 
     Code
       new_rec <- recipe(~., data = circle_example) %>% step_upsample(class, ratio = 2)
-    Error <lifecycle_error_deprecated>
-      The `ratio` argument of `step_downsample()` was deprecated in themis 0.2.0 and is now defunct.
+    Condition
+      Error:
+      ! The `ratio` argument of `step_downsample()` was deprecated in themis 0.2.0 and is now defunct.
       i Please use the `over_ratio` argument instead.
 
 # bad data
 
     Code
       rec %>% step_upsample(x) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_upsample()`:
       Caused by error in `prep()`:
       ! `x` should be a factor variable.
@@ -19,16 +20,16 @@
 
     Code
       rec %>% step_upsample(class, id) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_upsample()`:
       Caused by error in `prep()`:
-      ! The selector should select at most a single variable
+      ! The selector should select at most a single variable.
 
 # case_weights
 
     Code
       rec1_p
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -47,7 +48,7 @@
 
     Code
       rec1_p
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -62,11 +63,36 @@
       -- Operations 
       * Up-sampling based on: class | Trained, ignored weights
 
+# bad args
+
+    Code
+      recipe(~., data = mtcars) %>% step_upsample(over_ratio = "yes") %>% prep()
+    Condition
+      Error in `step_upsample()`:
+      Caused by error in `prep()`:
+      ! `over_ratio` must be a number, not the string "yes".
+
+---
+
+    Code
+      recipe(~., data = mtcars) %>% step_upsample(seed = TRUE)
+    Condition
+      Error in `step_upsample()`:
+      ! `seed` must be a whole number, not `TRUE`.
+
+# bake method errors when needed non-standard role columns are missing
+
+    Code
+      bake(trained, new_data = circle_example[, -3])
+    Condition
+      Error in `step_upsample()`:
+      ! The following required column is missing from `new_data`: class.
+
 # empty printing
 
     Code
       rec
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -82,7 +108,7 @@
 
     Code
       rec
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -101,7 +127,7 @@
 
     Code
       print(rec)
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -116,7 +142,7 @@
 
     Code
       prep(rec)
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       

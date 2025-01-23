@@ -1,26 +1,25 @@
-library(testthat)
-library(recipes)
-library(dplyr)
-library(modeldata)
-
 test_that("errors if there isn't enough data", {
-  data("credit_data")
+  skip_if_not_installed("modeldata")
+
+  data("credit_data", package = "modeldata")
   credit_data0 <- credit_data
 
   credit_data0$Status <- as.character(credit_data0$Status)
   credit_data0$Status[1] <- "dummy"
   credit_data0$Status <- as.factor(credit_data0$Status)
 
-  expect_error(
+  expect_snapshot(
+    error = TRUE,
     recipe(Status ~ Age, data = credit_data0) %>%
       step_smotenc(Status) %>%
-      prep(),
-    "Not enough observations"
+      prep()
   )
 })
 
 test_that("basic usage", {
-  data(ames)
+  skip_if_not_installed("modeldata")
+
+  data("ames", package = "modeldata")
 
   rec1 <- recipe(Alley ~ MS_SubClass + MS_Zoning + Lot_Frontage + Lot_Area + Street,
                  data = ames) %>%
@@ -33,25 +32,24 @@ test_that("basic usage", {
 
   expect_equal(sort(te_xtab), sort(og_xtab))
 
-  expect_warning(prep(rec1), NA)
+  expect_no_warning(prep(rec1))
 })
 
 test_that("bad data", {
-
   rec <- recipe(~., data = circle_example)
   # numeric check
-  expect_error(
+  expect_snapshot(
+    error = TRUE,
     rec %>%
       step_smotenc(x) %>%
-      prep(),
-    regexp = "should be a factor variable."
+      prep()
   )
   # Multiple variable check
-  expect_error(
+  expect_snapshot(
+    error = TRUE,
     rec %>%
       step_smotenc(class, id) %>%
-      prep(),
-    regexp = "The selector should select at most a single variable"
+      prep()
   )
 })
 
@@ -62,22 +60,23 @@ test_that("allows for character variables", {
     stringsAsFactors = FALSE
   )
 
-  expect_error(
+  expect_no_error(
     recipe(~., data = df_char) %>%
       step_smotenc(x) %>%
-      prep(),
-    NA
+      prep()
   )
 })
 
 test_that("NA in response", {
-  data(credit_data)
+  skip_if_not_installed("modeldata")
 
-  expect_error(
+  data("credit_data", package = "modeldata")
+
+  expect_snapshot(
+    error = TRUE,
     recipe(Job ~ Age, data = credit_data) %>%
       step_smotenc(Job) %>%
-      prep(),
-    regexp = "NAs found ind: Job."
+      prep()
   )
 })
 
@@ -119,6 +118,10 @@ test_that("test tidy()", {
 })
 
 test_that("ratio value works when oversampling", {
+  skip_if_not_installed("modeldata")
+
+  data("ames", package = "modeldata")
+
   res1 <- recipe(Alley ~ MS_SubClass + MS_Zoning + Lot_Frontage + Lot_Area + Street,
                  data = ames) %>%
     step_smotenc(Alley) %>%
@@ -139,17 +142,20 @@ test_that("ratio value works when oversampling", {
 })
 
 test_that("allows multi-class", {
-  data("credit_data")
-  expect_error(
+  skip_if_not_installed("modeldata")
+
+  data("credit_data", package = "modeldata")
+  expect_no_error(
     recipe(Home ~ Age + Income + Assets, data = credit_data) %>%
       step_impute_mean(Income, Assets) %>%
-      step_smotenc(Home),
-    NA
+      step_smotenc(Home)
   )
 })
 
 test_that("majority classes are ignored if there is more than 1", {
-  data("penguins")
+  skip_if_not_installed("modeldata")
+  
+  data("penguins", package = "modeldata")
   rec1_p2 <- recipe(species ~ bill_length_mm + bill_depth_mm,
                     data = penguins[-(1:28), ]) %>%
     step_impute_mean(all_predictors()) %>%
@@ -255,6 +261,26 @@ test_that("tunable", {
   )
 })
 
+test_that("bad args", {
+  expect_snapshot(
+    error = TRUE,
+    recipe(~., data = mtcars) %>%
+      step_smotenc(over_ratio = "yes") %>%
+      prep()
+  )
+  expect_snapshot(
+    error = TRUE,
+    recipe(~., data = mtcars) %>%
+      step_smotenc(neighbors = TRUE) %>%
+      prep()
+  )
+  expect_snapshot(
+    error = TRUE,
+    recipe(~., data = mtcars) %>%
+      step_smotenc(seed = TRUE)
+  )
+})
+
 # Infrastructure ---------------------------------------------------------------
 
 test_that("bake method errors when needed non-standard role columns are missing", {
@@ -265,8 +291,10 @@ test_that("bake method errors when needed non-standard role columns are missing"
 
   trained <- prep(rec, training = circle_example, verbose = FALSE)
 
-  expect_error(bake(trained, new_data = circle_example[, -3]),
-               class = "new_data_missing_column")
+  expect_snapshot(
+    error = TRUE,
+    bake(trained, new_data = circle_example[, -3])
+  )
 })
 
 test_that("empty printing", {

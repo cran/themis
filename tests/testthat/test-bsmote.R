@@ -1,12 +1,7 @@
-library(testthat)
-library(recipes)
-library(dplyr)
-library(modeldata)
-
-set.seed(1234)
-
 test_that("all minority classes are upsampled", {
-  data("penguins")
+  skip_if_not_installed("modeldata")
+
+  data("penguins", package = "modeldata")
   rec1_p2 <- recipe(species ~ bill_length_mm + bill_depth_mm,
     data = penguins
   ) %>%
@@ -29,7 +24,7 @@ test_that("basic usage", {
 
   expect_equal(sort(te_xtab), sort(og_xtab))
 
-  expect_warning(prep(rec1), NA)
+  expect_no_warning(prep(rec1))
 })
 
 test_that("basic usage", {
@@ -43,19 +38,21 @@ test_that("basic usage", {
 
   expect_equal(sort(te_xtab), sort(og_xtab))
 
-  expect_warning(prep(rec1), NA)
+  expect_no_warning(prep(rec1))
 })
 
 test_that("bad data", {
   rec <- recipe(~., data = circle_example)
   # numeric check
-  expect_snapshot(error = TRUE,
+  expect_snapshot(
+    error = TRUE,
     rec %>%
       step_bsmote(x) %>%
       prep()
   )
   # Multiple variable check
-  expect_snapshot(error = TRUE,
+  expect_snapshot(
+    error = TRUE,
     rec %>%
       step_bsmote(class, id) %>%
       prep()
@@ -69,7 +66,8 @@ test_that("errors if character are present", {
     stringsAsFactors = FALSE
   )
 
-  expect_snapshot(error = TRUE,
+  expect_snapshot(
+    error = TRUE,
     recipe(~., data = df_char) %>%
       step_bsmote(x) %>%
       prep()
@@ -77,9 +75,12 @@ test_that("errors if character are present", {
 })
 
 test_that("NA in response", {
-  data(credit_data)
+  skip_if_not_installed("modeldata")
+  
+  data("credit_data", package = "modeldata")
 
-  expect_snapshot(error = TRUE,
+  expect_snapshot(
+    error = TRUE,
     recipe(Job ~ Age, data = credit_data) %>%
       step_bsmote(Job) %>%
       prep()
@@ -160,17 +161,20 @@ test_that("ratio value works when oversampling", {
 })
 
 test_that("allows multi-class", {
-  data("credit_data")
-  expect_error(
+  skip_if_not_installed("modeldata")
+
+  data("credit_data", package = "modeldata")
+  expect_no_error(
     recipe(Home ~ Age + Income + Assets, data = credit_data) %>%
       step_impute_mean(Income, Assets) %>%
-      step_bsmote(Home),
-    NA
+      step_bsmote(Home)
   )
 })
 
 test_that("majority classes are ignored if there is more than 1", {
-  data("penguins")
+  skip_if_not_installed("modeldata")
+
+  data("penguins", package = "modeldata")
   rec1_p2 <- recipe(species ~ bill_length_mm + bill_depth_mm,
     data = penguins[-(1:28), ]
   ) %>%
@@ -186,7 +190,9 @@ test_that("majority classes are ignored if there is more than 1", {
 
 
 test_that("majority classes are ignored if there is more than 1", {
-  data("penguins")
+  skip_if_not_installed("modeldata")
+
+  data("penguins", package = "modeldata")
   rec1_p2 <- recipe(species ~ bill_length_mm + bill_depth_mm,
     data = penguins[-(1:28), ]
   ) %>%
@@ -324,6 +330,33 @@ test_that("tunable", {
   )
 })
 
+test_that("bad args", {
+  expect_snapshot(
+    error = TRUE,
+    recipe(~., data = mtcars) %>%
+      step_bsmote(over_ratio = "yes") %>%
+      prep()
+  )
+  expect_snapshot(
+    error = TRUE,
+    recipe(~., data = mtcars) %>%
+      step_bsmote(neighbors = TRUE) %>%
+      prep()
+  )
+  expect_snapshot(
+    error = TRUE,
+    recipe(~., data = mtcars) %>%
+      step_bsmote(all_neighbors = "yes") %>%
+      prep()
+  )
+  expect_snapshot(
+    error = TRUE,
+    recipe(~., data = mtcars) %>%
+      step_bsmote(seed = TRUE)
+  )
+})
+
+
 # Infrastructure ---------------------------------------------------------------
 
 test_that("bake method errors when needed non-standard role columns are missing", {
@@ -334,8 +367,10 @@ test_that("bake method errors when needed non-standard role columns are missing"
 
   trained <- prep(rec, training = circle_example, verbose = FALSE)
 
-  expect_error(bake(trained, new_data = circle_example[, -3]),
-               class = "new_data_missing_column")
+  expect_snapshot(
+    error = TRUE,
+    bake(trained, new_data = circle_example[, -3])
+  )
 })
 
 test_that("empty printing", {

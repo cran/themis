@@ -2,6 +2,7 @@
 % Please edit documentation in R/adasyn.R
 \name{step_adasyn}
 \alias{step_adasyn}
+\alias{tidy.step_adasyn}
 \title{Apply Adaptive Synthetic Algorithm}
 \usage{
 step_adasyn(
@@ -22,7 +23,7 @@ step_adasyn(
 sequence of operations for this recipe.}
 
 \item{...}{One or more selector functions to choose which
-variable is used to sample the data. See \code{\link[=selections]{selections()}}
+variable is used to sample the data. See \link[recipes:selections]{recipes::selections}
 for more details. The selection should result in \emph{single
 factor variable}. For the \code{tidy} method, these are not
 currently used.}
@@ -37,7 +38,7 @@ preprocessing have been estimated.}
 be populated (eventually) by the \code{...} selectors.}
 
 \item{over_ratio}{A numeric value for the ratio of the
-majority-to-minority frequencies. The default value (1) means
+minority-to-majority frequencies. The default value (1) means
 that all other levels are sampled up to have the same
 frequency as the most occurring level. A value of 0.5 would mean
 that the minority levels will have (at most) (approximately)
@@ -69,8 +70,8 @@ the variable used to sample.
 synthetic positive instances using ADASYN algorithm.
 }
 \details{
-All columns in the data are sampled and returned by \code{\link[=juice]{juice()}}
-and \code{\link[=bake]{bake()}}.
+All columns in the data are sampled and returned by \code{\link[recipes:juice]{recipes::juice()}}
+and \code{\link[recipes:bake]{recipes::bake()}}.
 
 All columns used in this step must be numeric with no missing data.
 
@@ -79,8 +80,13 @@ option \code{skip = TRUE} so that the extra sampling is \emph{not}
 conducted outside of the training set.
 }
 \section{Tidying}{
-When you \code{\link[=tidy.recipe]{tidy()}} this step, a tibble with columns \code{terms}
-(the selectors or variables selected) will be returned.
+When you \code{\link[recipes:tidy.recipe]{tidy()}} this step, a tibble is retruned with
+columns \code{terms} and \code{id}:
+
+\describe{
+\item{terms}{character, the selectors or variables selected}
+\item{id}{character, id of this step}
+}
 }
 
 \section{Tuning Parameters}{
@@ -98,6 +104,7 @@ The underlying operation does not allow for case weights.
 }
 
 \examples{
+\dontshow{if (rlang::is_installed("modeldata")) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
 library(recipes)
 library(modeldata)
 data(hpc_data)
@@ -144,6 +151,7 @@ recipe(class ~ x + y, data = circle_example) \%>\%
   ggplot(aes(x, y, color = class)) +
   geom_point() +
   labs(title = "With ADASYN")
+\dontshow{\}) # examplesIf}
 }
 \references{
 He, H., Bai, Y., Garcia, E. and Li, S. 2008. ADASYN: Adaptive
@@ -157,8 +165,8 @@ International Joint Conference. pp.1322-1328.
 Other Steps for over-sampling: 
 \code{\link{step_bsmote}()},
 \code{\link{step_rose}()},
-\code{\link{step_smotenc}()},
 \code{\link{step_smote}()},
+\code{\link{step_smotenc}()},
 \code{\link{step_upsample}()}
 }
 \concept{Steps for over-sampling}

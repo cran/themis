@@ -2,7 +2,7 @@
 
     Code
       rec %>% step_bsmote(x) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_bsmote()`:
       Caused by error in `prep()`:
       ! `x` should be a factor variable.
@@ -11,34 +11,78 @@
 
     Code
       rec %>% step_bsmote(class, id) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_bsmote()`:
       Caused by error in `prep()`:
-      ! The selector should select at most a single variable
+      ! The selector should select at most a single variable.
 
 # errors if character are present
 
     Code
       recipe(~., data = df_char) %>% step_bsmote(x) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_bsmote()`:
       Caused by error in `prep()`:
-      ! All columns selected for the step should be double, or integer.
+      x All columns selected for the step should be double or integer.
+      * 1 factor variable found: `y`
 
 # NA in response
 
     Code
       recipe(Job ~ Age, data = credit_data) %>% step_bsmote(Job) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_bsmote()`:
       Caused by error in `prep()`:
-      ! Cannot have any missing values. NAs found ind: Job.
+      ! Cannot have any missing values. NAs found in Job.
+
+# bad args
+
+    Code
+      recipe(~., data = mtcars) %>% step_bsmote(over_ratio = "yes") %>% prep()
+    Condition
+      Error in `step_bsmote()`:
+      Caused by error in `prep()`:
+      ! `over_ratio` must be a number, not the string "yes".
+
+---
+
+    Code
+      recipe(~., data = mtcars) %>% step_bsmote(neighbors = TRUE) %>% prep()
+    Condition
+      Error in `step_bsmote()`:
+      Caused by error in `prep()`:
+      ! `neighbors` must be a whole number, not `TRUE`.
+
+---
+
+    Code
+      recipe(~., data = mtcars) %>% step_bsmote(all_neighbors = "yes") %>% prep()
+    Condition
+      Error in `step_bsmote()`:
+      Caused by error in `prep()`:
+      ! `all_neighbors` must be `TRUE` or `FALSE`, not the string "yes".
+
+---
+
+    Code
+      recipe(~., data = mtcars) %>% step_bsmote(seed = TRUE)
+    Condition
+      Error in `step_bsmote()`:
+      ! `seed` must be a whole number, not `TRUE`.
+
+# bake method errors when needed non-standard role columns are missing
+
+    Code
+      bake(trained, new_data = circle_example[, -3])
+    Condition
+      Error in `step_bsmote()`:
+      ! The following required column is missing from `new_data`: class.
 
 # empty printing
 
     Code
       rec
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -54,7 +98,7 @@
 
     Code
       rec
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -73,7 +117,7 @@
 
     Code
       print(rec)
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -89,7 +133,7 @@
 
     Code
       prep(rec)
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       

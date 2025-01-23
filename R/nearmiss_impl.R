@@ -31,23 +31,10 @@
 #'
 #' res <- nearmiss(circle_numeric, var = "class", under_ratio = 1.5)
 nearmiss <- function(df, var, k = 5, under_ratio = 1) {
-  if (length(var) != 1) {
-    rlang::abort("Please select a single factor variable for `var`.")
-  }
-
-  var <- rlang::arg_match(var, colnames(df))
-
-  if (!(is.factor(df[[var]]) | is.character(df[[var]]))) {
-    rlang::abort(glue("`{var}` should be a factor or character variable."))
-  }
-
-  if (length(k) != 1) {
-    rlang::abort("`k` must be length 1.")
-  }
-
-  if (k < 1) {
-    rlang::abort("`k` must be non-negative.")
-  }
+  check_data_frame(df)
+  check_var(var, df)
+  check_number_whole(k, min = 1)
+  check_number_decimal(under_ratio)
 
   predictors <- setdiff(colnames(df), var)
 
@@ -69,11 +56,7 @@ nearmiss_impl <- function(df, var, ignore_vars, k = 5, under_ratio = 1) {
     not_class <- subset_to_matrix(df_only, var, names(classes)[i], FALSE)
 
     if (nrow(not_class) <= k) {
-      rlang::abort(
-        glue(
-        "Not enough danger observations of '{names(classes)[i]}' to perform NEARMISS."
-        )
-      )
+      cli::cli_abort("Not enough danger observations of {.val {names(classes)[i]}} to perform NEARMISS.")
     }
 
     dists <- RANN::nn2(

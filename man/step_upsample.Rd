@@ -2,6 +2,7 @@
 % Please edit documentation in R/upsample.R
 \name{step_upsample}
 \alias{step_upsample}
+\alias{tidy.step_upsample}
 \title{Up-Sample a Data Set Based on a Factor Variable}
 \usage{
 step_upsample(
@@ -23,13 +24,13 @@ step_upsample(
 sequence of operations for this recipe.}
 
 \item{...}{One or more selector functions to choose which
-variable is used to sample the data. See \code{\link[=selections]{selections()}}
+variable is used to sample the data. See \link[recipes:selections]{recipes::selections}
 for more details. The selection should result in \emph{single
 factor variable}. For the \code{tidy} method, these are not
 currently used.}
 
 \item{over_ratio}{A numeric value for the ratio of the
-majority-to-minority frequencies. The default value (1) means
+minority-to-majority frequencies. The default value (1) means
 that all other levels are sampled up to have the same
 frequency as the most occurring level. A value of 0.5 would mean
 that the minority levels will have (at most) (approximately)
@@ -84,12 +85,17 @@ majority level (see example below).
 For any data with factor levels occurring with the same
 frequency as the majority level, all data will be retained.
 
-All columns in the data are sampled and returned by \code{\link[=juice]{juice()}}
-and \code{\link[=bake]{bake()}}.
+All columns in the data are sampled and returned by \code{\link[recipes:juice]{recipes::juice()}}
+and \code{\link[recipes:bake]{recipes::bake()}}.
 }
 \section{Tidying}{
-When you \code{\link[=tidy.recipe]{tidy()}} this step, a tibble with columns \code{terms}
-(the selectors or variables selected) will be returned.
+When you \code{\link[recipes:tidy.recipe]{tidy()}} this step, a tibble is retruned with
+columns \code{terms} and \code{id}:
+
+\describe{
+\item{terms}{character, the selectors or variables selected}
+\item{id}{character, id of this step}
+}
 }
 
 \section{Tuning Parameters}{
@@ -108,6 +114,7 @@ To use them, see the documentation in \link[recipes:case_weights]{recipes::case_
 }
 
 \examples{
+\dontshow{if (rlang::is_installed("modeldata")) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
 library(recipes)
 library(modeldata)
 data(hpc_data)
@@ -154,13 +161,14 @@ recipe(class ~ x + y, data = circle_example) \%>\%
   ggplot(aes(x, y, color = class)) +
   geom_jitter(width = 0.1, height = 0.1) +
   labs(title = "With upsample (with jittering)")
+\dontshow{\}) # examplesIf}
 }
 \seealso{
 Other Steps for over-sampling: 
 \code{\link{step_adasyn}()},
 \code{\link{step_bsmote}()},
 \code{\link{step_rose}()},
-\code{\link{step_smotenc}()},
-\code{\link{step_smote}()}
+\code{\link{step_smote}()},
+\code{\link{step_smotenc}()}
 }
 \concept{Steps for over-sampling}

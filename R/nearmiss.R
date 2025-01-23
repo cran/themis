@@ -8,7 +8,7 @@
 #' @inheritParams step_downsample
 #' @inheritParams step_smote
 #' @param ... One or more selector functions to choose which
-#'  variable is used to sample the data. See [selections()]
+#'  variable is used to sample the data. See [recipes::selections]
 #'  for more details. The selection should result in _single
 #'  factor variable_. For the `tidy` method, these are not
 #'  currently used.
@@ -27,8 +27,8 @@
 #' This method retains the points from the majority class which have the
 #' smallest mean distance to the k nearest points in the minority class.
 #'
-#' All columns in the data are sampled and returned by [juice()]
-#'  and [bake()].
+#' All columns in the data are sampled and returned by [recipes::juice()]
+#'  and [recipes::bake()].
 #'
 #' All columns used in this step must be numeric with no missing data.
 #'
@@ -38,8 +38,13 @@
 #'
 #' # Tidying
 #'
-#' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
-#' (the selectors or variables selected) will be returned.
+#' When you [`tidy()`][recipes::tidy.recipe()] this step, a tibble is retruned with
+#'  columns `terms` and `id`:
+#'
+#' \describe{
+#'   \item{terms}{character, the selectors or variables selected}
+#'   \item{id}{character, id of this step}
+#' }
 #'
 #' ```{r, echo = FALSE, results="asis"}
 #' step <- "step_nearmiss"
@@ -57,7 +62,7 @@
 #' @family Steps for under-sampling
 #'
 #' @export
-#' @examples
+#' @examplesIf rlang::is_installed("modeldata")
 #' library(recipes)
 #' library(modeldata)
 #' data(hpc_data)
@@ -113,6 +118,8 @@ step_nearmiss <-
            column = NULL, under_ratio = 1, neighbors = 5, skip = TRUE,
            seed = sample.int(10^5, 1),
            id = rand_id("nearmiss")) {
+    check_number_whole(seed)
+    
     add_step(
       recipe,
       step_nearmiss_new(
@@ -153,13 +160,11 @@ step_nearmiss_new <-
 prep.step_nearmiss <- function(x, training, info = NULL, ...) {
   col_name <- recipes_eval_select(x$terms, training, info)
 
-  if (length(col_name) > 1) {
-    rlang::abort("The selector should select at most a single variable")
-  }
+  check_number_decimal(x$under_ratio, arg = "under_ratio", min = 0)
+  check_number_whole(x$neighbors, arg = "neighbors", min = 1)
 
-  if (length(col_name) == 1) {
-    check_column_factor(training, col_name)
-  }
+  check_1_selected(col_name)
+  check_column_factor(training, col_name)
 
   predictors <- setdiff(get_from_info(info, "predictor"), col_name)
 
@@ -222,8 +227,8 @@ print.step_nearmiss <-
     invisible(x)
   }
 
-#' @rdname tidy.recipe
-#' @param x A `step_nearmiss` object.
+#' @rdname step_nearmiss
+#' @usage NULL
 #' @export
 tidy.step_nearmiss <- function(x, ...) {
   if (is_trained(x)) {

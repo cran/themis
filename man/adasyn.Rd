@@ -16,7 +16,7 @@ numeric variables.}
 to generate the new examples of the minority class.}
 
 \item{over_ratio}{A numeric value for the ratio of the
-majority-to-minority frequencies. The default value (1) means
+minority-to-majority frequencies. The default value (1) means
 that all other levels are sampled up to have the same
 frequency as the most occurring level. A value of 0.5 would mean
 that the minority levels will have (at most) (approximately)
@@ -51,8 +51,8 @@ Journal of Artificial Intelligence Research, 16:321-357.
 Other Direct Implementations: 
 \code{\link{bsmote}()},
 \code{\link{nearmiss}()},
-\code{\link{smotenc}()},
 \code{\link{smote}()},
+\code{\link{smotenc}()},
 \code{\link{tomek}()}
 }
 \concept{Direct Implementations}

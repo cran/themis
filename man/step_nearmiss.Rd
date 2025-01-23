@@ -2,6 +2,7 @@
 % Please edit documentation in R/nearmiss.R
 \name{step_nearmiss}
 \alias{step_nearmiss}
+\alias{tidy.step_nearmiss}
 \title{Remove Points Near Other Classes}
 \usage{
 step_nearmiss(
@@ -22,7 +23,7 @@ step_nearmiss(
 sequence of operations for this recipe.}
 
 \item{...}{One or more selector functions to choose which
-variable is used to sample the data. See \code{\link[=selections]{selections()}}
+variable is used to sample the data. See \link[recipes:selections]{recipes::selections}
 for more details. The selection should result in \emph{single
 factor variable}. For the \code{tidy} method, these are not
 currently used.}
@@ -37,7 +38,7 @@ preprocessing have been estimated.}
 be populated (eventually) by the \code{...} selectors.}
 
 \item{under_ratio}{A numeric value for the ratio of the
-minority-to-majority frequencies. The default value (1) means
+majority-to-minority frequencies. The default value (1) means
 that all other levels are sampled down to have the same
 frequency as the least occurring level. A value of 2 would mean
 that the majority levels will have (at most) (approximately)
@@ -73,8 +74,8 @@ on their distance to other points in the same class.
 This method retains the points from the majority class which have the
 smallest mean distance to the k nearest points in the minority class.
 
-All columns in the data are sampled and returned by \code{\link[=juice]{juice()}}
-and \code{\link[=bake]{bake()}}.
+All columns in the data are sampled and returned by \code{\link[recipes:juice]{recipes::juice()}}
+and \code{\link[recipes:bake]{recipes::bake()}}.
 
 All columns used in this step must be numeric with no missing data.
 
@@ -83,8 +84,13 @@ option \code{skip = TRUE} so that the extra sampling is \emph{not}
 conducted outside of the training set.
 }
 \section{Tidying}{
-When you \code{\link[=tidy.recipe]{tidy()}} this step, a tibble with columns \code{terms}
-(the selectors or variables selected) will be returned.
+When you \code{\link[recipes:tidy.recipe]{tidy()}} this step, a tibble is retruned with
+columns \code{terms} and \code{id}:
+
+\describe{
+\item{terms}{character, the selectors or variables selected}
+\item{id}{character, id of this step}
+}
 }
 
 \section{Tuning Parameters}{
@@ -102,6 +108,7 @@ The underlying operation does not allow for case weights.
 }
 
 \examples{
+\dontshow{if (rlang::is_installed("modeldata")) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
 library(recipes)
 library(modeldata)
 data(hpc_data)
@@ -152,6 +159,7 @@ recipe(class ~ x + y, data = circle_example) \%>\%
   labs(title = "With NEARMISS") +
   xlim(c(1, 15)) +
   ylim(c(1, 15))
+\dontshow{\}) # examplesIf}
 }
 \references{
 Inderjeet Mani and I Zhang. knn approach to unbalanced data

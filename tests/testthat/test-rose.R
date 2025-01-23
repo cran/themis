@@ -1,10 +1,3 @@
-library(testthat)
-library(recipes)
-library(dplyr)
-library(modeldata)
-
-set.seed(1234)
-
 test_that("minority_prop value", {
   rec <- recipe(class ~ x + y, data = circle_example)
   rec21 <- rec %>%
@@ -25,25 +18,22 @@ test_that("minority_prop value", {
 })
 
 test_that("row matching works correctly #36", {
-  expect_error(
+  expect_no_error(
     recipe(class ~ ., data = circle_example) %>%
       step_rose(class, over_ratio = 1.2) %>%
-      prep(),
-    NA
+      prep()
   )
 
-  expect_error(
+  expect_no_error(
     recipe(class ~ ., data = circle_example) %>%
       step_rose(class, over_ratio = 0.8) %>%
-      prep(),
-    NA
+      prep()
   )
 
-  expect_error(
+  expect_no_error(
     recipe(class ~ ., data = circle_example) %>%
       step_rose(class, over_ratio = 1.7) %>%
-      prep(),
-    NA
+      prep()
   )
 })
 
@@ -58,19 +48,21 @@ test_that("basic usage", {
 
   expect_equal(sort(te_xtab), sort(og_xtab))
 
-  expect_warning(prep(rec1), NA)
+  expect_no_warning(prep(rec1))
 })
 
 test_that("bad data", {
   rec <- recipe(~., data = circle_example)
   # numeric check
-  expect_snapshot(error = TRUE,
+  expect_snapshot(
+    error = TRUE,
     rec %>%
       step_rose(x) %>%
       prep()
   )
   # Multiple variable check
-  expect_snapshot(error = TRUE,
+  expect_snapshot(
+    error = TRUE,
     rec %>%
       step_rose(class, id) %>%
       prep()
@@ -78,11 +70,14 @@ test_that("bad data", {
 })
 
 test_that("NA in response", {
-  data(credit_data)
+  skip_if_not_installed("modeldata")
+  
+  data("credit_data", package = "modeldata")
   credit_data0 <- credit_data
   credit_data0[1, 1] <- NA
 
-  expect_snapshot(error = TRUE,
+  expect_snapshot(
+    error = TRUE,
     recipe(Status ~ Age, data = credit_data0) %>%
       step_rose(Status) %>%
       prep()
@@ -132,7 +127,8 @@ test_that("only except 2 classes", {
     stringsAsFactors = FALSE
   )
 
-  expect_snapshot(error = TRUE,
+  expect_snapshot(
+    error = TRUE,
     recipe(~., data = df_char) %>%
       step_rose(x) %>%
       prep()
@@ -218,6 +214,36 @@ test_that("tunable", {
   )
 })
 
+test_that("bad args", {
+  expect_snapshot(
+    error = TRUE,
+    recipe(~., data = mtcars) %>%
+      step_rose(over_ratio = "yes") %>%
+      prep()
+  )
+  expect_snapshot(
+    error = TRUE,
+    recipe(~., data = mtcars) %>%
+      step_rose(minority_prop = TRUE)
+  )
+  expect_snapshot(
+    error = TRUE,
+    recipe(~., data = mtcars) %>%
+      step_rose(minority_smoothness = TRUE)
+  )
+  expect_snapshot(
+    error = TRUE,
+    recipe(~., data = mtcars) %>%
+      step_rose(majority_smoothness = TRUE)
+  )
+  expect_snapshot(
+    error = TRUE,
+    recipe(~., data = mtcars) %>%
+      step_rose(seed = TRUE)
+  )
+})
+
+
 # Infrastructure ---------------------------------------------------------------
 
 test_that("bake method errors when needed non-standard role columns are missing", {
@@ -228,8 +254,10 @@ test_that("bake method errors when needed non-standard role columns are missing"
 
   trained <- prep(rec, training = circle_example, verbose = FALSE)
 
-  expect_error(bake(trained, new_data = circle_example[, -3]),
-               class = "new_data_missing_column")
+  expect_snapshot(
+    error = TRUE,
+    bake(trained, new_data = circle_example[, -3])
+  )
 })
 
 test_that("empty printing", {

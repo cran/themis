@@ -2,7 +2,7 @@
 
     Code
       rec %>% step_nearmiss(x) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_nearmiss()`:
       Caused by error in `prep()`:
       ! `x` should be a factor variable.
@@ -11,34 +11,69 @@
 
     Code
       rec %>% step_nearmiss(class, id) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_nearmiss()`:
       Caused by error in `prep()`:
-      ! The selector should select at most a single variable
+      ! The selector should select at most a single variable.
 
 # errors if character are present
 
     Code
       recipe(~., data = df_char) %>% step_nearmiss(x) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_nearmiss()`:
       Caused by error in `prep()`:
-      ! All columns selected for the step should be double, or integer.
+      x All columns selected for the step should be double or integer.
+      * 1 factor variable found: `y`
 
 # NA in response
 
     Code
       recipe(Job ~ Age, data = credit_data) %>% step_nearmiss(Job) %>% prep()
-    Error <recipes_error_step>
+    Condition
       Error in `step_nearmiss()`:
       Caused by error in `prep()`:
-      ! Cannot have any missing values. NAs found ind: Job.
+      ! Cannot have any missing values. NAs found in Job.
+
+# bad args
+
+    Code
+      recipe(~., data = mtcars) %>% step_nearmiss(over_ratio = "yes") %>% prep()
+    Condition
+      Error in `step_nearmiss()`:
+      Caused by error in `prep()`:
+      ! The following argument was specified but do not exist: `over_ratio`.
+
+---
+
+    Code
+      recipe(~., data = mtcars) %>% step_nearmiss(neighbors = TRUE) %>% prep()
+    Condition
+      Error in `step_nearmiss()`:
+      Caused by error in `prep()`:
+      ! `neighbors` must be a whole number, not `TRUE`.
+
+---
+
+    Code
+      recipe(~., data = mtcars) %>% step_nearmiss(seed = TRUE)
+    Condition
+      Error in `step_nearmiss()`:
+      ! `seed` must be a whole number, not `TRUE`.
+
+# bake method errors when needed non-standard role columns are missing
+
+    Code
+      bake(trained, new_data = circle_example[, -3])
+    Condition
+      Error in `step_nearmiss()`:
+      ! The following required column is missing from `new_data`: class.
 
 # empty printing
 
     Code
       rec
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -54,7 +89,7 @@
 
     Code
       rec
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -73,7 +108,7 @@
 
     Code
       print(rec)
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       
@@ -89,7 +124,7 @@
 
     Code
       prep(rec)
-    Message <cliMessage>
+    Message
       
       -- Recipe ----------------------------------------------------------------------
       

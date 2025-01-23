@@ -5,7 +5,7 @@
 #'
 #' @inheritParams recipes::step_center
 #' @param ... One or more selector functions to choose which
-#'  variable is used to sample the data. See [selections()]
+#'  variable is used to sample the data. See [recipes::selections]
 #'  for more details. The selection should result in _single
 #'  factor variable_. For the `tidy` method, these are not
 #'  currently used.
@@ -27,8 +27,8 @@
 #' A tomek link is defined as a pair of points from different classes and are
 #' each others nearest neighbors.
 #'
-#' All columns in the data are sampled and returned by [juice()]
-#'  and [bake()].
+#' All columns in the data are sampled and returned by [recipes::juice()]
+#'  and [recipes::bake()].
 #'
 #' When used in modeling, users should strongly consider using the
 #'  option `skip = TRUE` so that the extra sampling is _not_
@@ -36,8 +36,13 @@
 #'
 #' # Tidying
 #'
-#' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
-#' (the selectors or variables selected) will be returned.
+#' When you [`tidy()`][recipes::tidy.recipe()] this step, a tibble is retruned with
+#'  columns `terms` and `id`:
+#'
+#' \describe{
+#'   \item{terms}{character, the selectors or variables selected}
+#'   \item{id}{character, id of this step}
+#' }
 #'
 #' @template case-weights-not-supported
 #'
@@ -48,7 +53,7 @@
 #' @family Steps for under-sampling
 #'
 #' @export
-#' @examples
+#' @examplesIf rlang::is_installed("modeldata")
 #' library(recipes)
 #' library(modeldata)
 #' data(hpc_data)
@@ -99,6 +104,8 @@ step_tomek <-
   function(recipe, ..., role = NA, trained = FALSE,
            column = NULL, skip = TRUE, seed = sample.int(10^5, 1),
            id = rand_id("tomek")) {
+    check_number_whole(seed)
+    
     add_step(
       recipe,
       step_tomek_new(
@@ -133,13 +140,9 @@ step_tomek_new <-
 #' @export
 prep.step_tomek <- function(x, training, info = NULL, ...) {
   col_name <- recipes_eval_select(x$terms, training, info)
-  if (length(col_name) > 1) {
-    rlang::abort("The selector should select at most a single variable")
-  }
-
-  if (length(col_name) == 1) {
-    check_column_factor(training, col_name)
-  }
+  
+  check_1_selected(col_name)
+  check_column_factor(training, col_name)
 
   predictors <- setdiff(get_from_info(info, "predictor"), col_name)
 
@@ -196,8 +199,8 @@ print.step_tomek <-
     invisible(x)
   }
 
-#' @rdname tidy.recipe
-#' @param x A `step_tomek` object.
+#' @rdname step_tomek
+#' @usage NULL
 #' @export
 tidy.step_tomek <- function(x, ...) {
   if (is_trained(x)) {

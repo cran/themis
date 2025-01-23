@@ -1,10 +1,3 @@
-library(testthat)
-library(recipes)
-library(dplyr)
-library(modeldata)
-
-set.seed(1234)
-
 test_that("basic usage", {
   rec1 <- recipe(class ~ x + y, data = circle_example) %>%
     step_nearmiss(class)
@@ -16,19 +9,21 @@ test_that("basic usage", {
 
   expect_equal(sort(te_xtab), sort(og_xtab))
 
-  expect_warning(prep(rec1), NA)
+  expect_no_warning(prep(rec1))
 })
 
 test_that("bad data", {
   rec <- recipe(~., data = circle_example)
   # numeric check
-  expect_snapshot(error = TRUE,
+  expect_snapshot(
+    error = TRUE,
     rec %>%
       step_nearmiss(x) %>%
       prep()
   )
   # Multiple variable check
-  expect_snapshot(error = TRUE,
+  expect_snapshot(
+    error = TRUE,
     rec %>%
       step_nearmiss(class, id) %>%
       prep()
@@ -42,7 +37,8 @@ test_that("errors if character are present", {
     stringsAsFactors = FALSE
   )
 
-  expect_snapshot(error = TRUE,
+  expect_snapshot(
+    error = TRUE,
     recipe(~., data = df_char) %>%
       step_nearmiss(x) %>%
       prep()
@@ -50,9 +46,12 @@ test_that("errors if character are present", {
 })
 
 test_that("NA in response", {
-  data(credit_data)
+  skip_if_not_installed("modeldata")
 
-  expect_snapshot(error = TRUE,
+  data("credit_data", package = "modeldata")
+
+  expect_snapshot(
+    error = TRUE,
     recipe(Job ~ Age, data = credit_data) %>%
       step_nearmiss(Job) %>%
       prep()
@@ -98,17 +97,20 @@ test_that("ratio value works when undersampling", {
 })
 
 test_that("allows multi-class", {
-  data("credit_data")
-  expect_error(
+  skip_if_not_installed("modeldata")
+
+  data("credit_data", package = "modeldata")
+  expect_no_error(
     recipe(Home ~ Age + Income + Assets, data = credit_data) %>%
       step_impute_mean(Income, Assets) %>%
-      step_nearmiss(Home),
-    NA
+      step_nearmiss(Home)
   )
 })
 
 test_that("minority classes are ignored if there is more than 1", {
-  data("penguins")
+  skip_if_not_installed("modeldata")
+
+  data("penguins", package = "modeldata")
   rec1_p2 <- recipe(species ~ bill_length_mm + bill_depth_mm,
     data = penguins[-(1:84), ]
   ) %>%
@@ -190,6 +192,26 @@ test_that("tunable", {
   )
 })
 
+test_that("bad args", {
+  expect_snapshot(
+    error = TRUE,
+    recipe(~., data = mtcars) %>%
+      step_nearmiss(over_ratio = "yes") %>%
+      prep()
+  )
+  expect_snapshot(
+    error = TRUE,
+    recipe(~., data = mtcars) %>%
+      step_nearmiss(neighbors = TRUE) %>%
+      prep()
+  )
+  expect_snapshot(
+    error = TRUE,
+    recipe(~., data = mtcars) %>%
+      step_nearmiss(seed = TRUE)
+  )
+})
+
 # Infrastructure ---------------------------------------------------------------
 
 test_that("bake method errors when needed non-standard role columns are missing", {
@@ -200,8 +222,10 @@ test_that("bake method errors when needed non-standard role columns are missing"
 
   trained <- prep(rec, training = circle_example, verbose = FALSE)
 
-  expect_error(bake(trained, new_data = circle_example[, -3]),
-               class = "new_data_missing_column")
+  expect_snapshot(
+    error = TRUE,
+    bake(trained, new_data = circle_example[, -3])
+  )
 })
 
 test_that("empty printing", {

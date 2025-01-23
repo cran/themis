@@ -6,7 +6,7 @@
 #'
 #' @inheritParams recipes::step_center
 #' @param ... One or more selector functions to choose which
-#'  variable is used to sample the data. See [selections()]
+#'  variable is used to sample the data. See [recipes::selections]
 #'  for more details. The selection should result in _single
 #'  factor variable_. For the `tidy` method, these are not
 #'  currently used.
@@ -15,7 +15,7 @@
 #' @param column A character string of the variable name that will
 #'  be populated (eventually) by the `...` selectors.
 #' @param over_ratio A numeric value for the ratio of the
-#'  majority-to-minority frequencies. The default value (1) means
+#'  minority-to-majority frequencies. The default value (1) means
 #'  that all other levels are sampled up to have the same
 #'  frequency as the most occurring level. A value of 0.5 would mean
 #'  that the minority levels will have (at most) (approximately)
@@ -41,13 +41,18 @@
 #' For any data with factor levels occurring with the same
 #'  frequency as the majority level, all data will be retained.
 #'
-#' All columns in the data are sampled and returned by [juice()]
-#'  and [bake()].
+#' All columns in the data are sampled and returned by [recipes::juice()]
+#'  and [recipes::bake()].
 #'
 #' # Tidying
 #'
-#' When you [`tidy()`][tidy.recipe()] this step, a tibble with columns `terms`
-#' (the selectors or variables selected) will be returned.
+#' When you [`tidy()`][recipes::tidy.recipe()] this step, a tibble is retruned with
+#'  columns `terms` and `id`:
+#'
+#' \describe{
+#'   \item{terms}{character, the selectors or variables selected}
+#'   \item{id}{character, id of this step}
+#' }
 #'
 #' ```{r, echo = FALSE, results="asis"}
 #' step <- "step_upsample"
@@ -60,7 +65,7 @@
 #' @family Steps for over-sampling
 #'
 #' @export
-#' @examples
+#' @examplesIf rlang::is_installed("modeldata")
 #' library(recipes)
 #' library(modeldata)
 #' data(hpc_data)
@@ -121,6 +126,8 @@ step_upsample <-
       )
     }
 
+    check_number_whole(seed)
+
     add_step(
       recipe,
       step_upsample_new(
@@ -163,20 +170,20 @@ step_upsample_new <-
 prep.step_upsample <- function(x, training, info = NULL, ...) {
   col_name <- recipes_eval_select(x$terms, training, info)
 
+  check_number_decimal(x$over_ratio, arg = "over_ratio", min = 0)
+
   wts <- recipes::get_case_weights(info, training)
   were_weights_used <- recipes::are_weights_used(wts, unsupervised = TRUE)
   if (isFALSE(were_weights_used) || is.null(wts)) {
     wts <- rep(1, nrow(training))
   }
 
-  if (length(col_name) > 1) {
-    rlang::abort("The selector should select at most a single variable")
-  }
+  check_1_selected(col_name)
+  check_column_factor(training, col_name)
 
   if (length(col_name) == 0) {
     majority <- 0
   } else {
-    check_column_factor(training, col_name)
     obs_freq <- weighted_table(training[[col_name]], as.integer(wts))
     majority <- max(obs_freq)
   }
@@ -264,8 +271,8 @@ print.step_upsample <-
     invisible(x)
   }
 
-#' @rdname tidy.recipe
-#' @param x A `step_upsample` object.
+#' @rdname step_upsample
+#' @usage NULL
 #' @export
 tidy.step_upsample <- function(x, ...) {
   if (is_trained(x)) {
